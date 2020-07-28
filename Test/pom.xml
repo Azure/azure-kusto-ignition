@@ -51,5 +51,6 @@
             <version>${fasterxml.jackson.core.version}</version>
         </dependency>
     </dependencies>
+    <uri></uri>
 
 </project>
