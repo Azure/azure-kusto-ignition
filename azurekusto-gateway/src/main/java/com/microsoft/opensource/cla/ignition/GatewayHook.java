@@ -56,4 +56,8 @@ public class GatewayHook extends AbstractGatewayModuleHook {
         }
     }
 
+    @Override
+    public boolean isFreeModule() {
+        return true;
+    }
 }

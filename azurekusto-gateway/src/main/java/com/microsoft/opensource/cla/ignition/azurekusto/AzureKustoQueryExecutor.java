@@ -11,13 +11,14 @@ import com.inductiveautomation.ignition.gateway.sqltags.history.query.HistoryQue
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.QueryController;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.columns.ErrorHistoryColumn;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.columns.ProcessedHistoryColumn;
-import com.microsoft.opensource.cla.ignition.TagValue;
+import com.microsoft.azure.kusto.data.ClientImpl;
+import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
+import com.microsoft.azure.kusto.ingest.IngestClient;
+import com.microsoft.azure.kusto.ingest.IngestClientFactory;
+import com.microsoft.azure.kusto.ingest.StreamingIngestClient;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.microsoft.azure.kusto.data.*;
-import com.microsoft.azure.kusto.ingest.*;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -41,13 +42,13 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
     private ConnectionStringBuilder connectionString;
 
     // A client for querying data
-    private ClientImpl              kustoQueryClient;
+    private ClientImpl kustoQueryClient;
 
     // A client for ingesting data in bulks
-    private IngestClient            kustoQueuedIngestClient;
+    private IngestClient kustoQueuedIngestClient;
 
     // A client for ingesting row by row
-    private StreamingIngestClient   kustoStreamingIngestClient;
+    private StreamingIngestClient kustoStreamingIngestClient;
 
     boolean processed = false;
     long maxTSInData = -1;
@@ -76,13 +77,12 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
             QualifiedPath qPath = c.getPath();
             String itemId = qPath.getPathComponent(WellKnownPathTypes.Tag);
 
-            TagValue tagValue = new TagValue();
+            AzureKustoTagValue tagValue = new AzureKustoTagValue();
             String driver = qPath.getPathComponent(WellKnownPathTypes.Driver);
             String[] parts = driver.split(":");
             tagValue.setSystemName(parts[0]);
             tagValue.setTagProvider(parts[1]);
             tagValue.setTagPath(itemId);
-            String fullTagPath = tagValue.toStringFull();
 
             if (StringUtils.isBlank(itemId)) {
                 // We set the data type to Integer here, because if the column is going to be errored, at least integer types won't cause charts to complain.
@@ -94,7 +94,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 ((ProcessedHistoryColumn) tag).setDataType(DataTypeClass.Float);
             }
 
-            tags.add(new AzureKustoHistoryTag(fullTagPath, c.getAggregate(), tag));
+            tags.add(new AzureKustoHistoryTag(tagValue, c.getAggregate(), tag));
         }
     }
 
@@ -115,23 +115,27 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
      */
     @Override
     public void initialize() throws Exception {
+        String clusterURL = settings.getString(AzureKustoHistoryProviderSettings.ClusterURL);
+        String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
+        String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
+        String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
+
         connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
-                AzureKustoHistoryProviderSettings.ClusterURL.toString(),
-                AzureKustoHistoryProviderSettings.ApplicationId.toString(),
-                AzureKustoHistoryProviderSettings.ApplicationKey.toString(),
-                AzureKustoHistoryProviderSettings.AADTenantId.toString());
+                clusterURL,
+                applicationId,
+                applicationKey,
+                aadTenantId);
 
         kustoQueryClient = new ClientImpl(connectionString);
         kustoStreamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
 
         connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
-                "ingest-" + AzureKustoHistoryProviderSettings.ClusterURL.toString(), // TODO Ohad
-                AzureKustoHistoryProviderSettings.ApplicationId.toString(),
-                AzureKustoHistoryProviderSettings.ApplicationKey.toString(),
-                AzureKustoHistoryProviderSettings.AADTenantId.toString());
+                "ingest-" + clusterURL, // TODO Ohad
+                applicationId,
+                applicationKey,
+                aadTenantId);
 
         kustoQueuedIngestClient = IngestClientFactory.createClient(connectionString);
-
     }
 
     @Override
@@ -153,10 +157,11 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 + ", startDate: " + startDate.toString() + ", endDate: " + endDate.toString());
 
         // TODO: Query the data from ADX and add to each to node
-        //for (AzureKustoHistoryNode node : columnNodes) {
-        //    if(node.valid()) { // Only for tags with valid tag path
+        //for (AzureKustoHistoryTag tag : tags) {
+        //    if(tag.valid()) { // Only for tags with valid tag path
         //       List<QualifiedValue> values = new ArrayList<>();
-        //       node.getProcessedHistoryTag().put(values);
+        //       values.add(new BasicQualifiedValue(10, DataQuality.GOOD_DATA, new Date()));
+        //       tag.getProcessedHistoryTag().put(values);
         //
         //       long resMaxTS = ...;
         //       if (resMaxTS > maxTSInData) {
@@ -166,9 +171,9 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         //}
 
         if (blockSize > 0) {
-            // Block data
+            // Block data, use aggregate function
         } else {
-            // Raw data
+            // Raw data, no aggregate function
         }
     }
 

@@ -1,0 +1,1 @@
+java -jar module-signer.jar -keystore=microsoft.pfx -keystore-pwd=microsoft -alias=microsoft -alias-pwd=microsoft -chain=microsoft.p7b -module-in=Azure-Kusto-Ignition-Module-unsigned.modl -module-out=Azure-Kusto-Ignition-Module-signed.modl
