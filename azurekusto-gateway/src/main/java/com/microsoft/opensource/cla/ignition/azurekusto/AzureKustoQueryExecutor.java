@@ -41,13 +41,13 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
     private ConnectionStringBuilder connectionString;
 
     // A client for querying data
-    private ClientImpl              kustoQueryclient;
+    private ClientImpl              kustoQueryClient;
 
     // A client for ingesting data in bulks
-    private IngestClient            kustoQueuedIngestclient;
+    private IngestClient            kustoQueuedIngestClient;
 
     // A client for ingesting row by row
-    private StreamingIngestClient   kustoTreamingIngestclient;
+    private StreamingIngestClient   kustoStreamingIngestClient;
 
     boolean processed = false;
     long maxTSInData = -1;
@@ -121,11 +121,17 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 AzureKustoHistoryProviderSettings.ApplicationKey.toString(),
                 AzureKustoHistoryProviderSettings.AADTenantId.toString());
 
-        kustoQueryclient = new ClientImpl(connectionString);
+        kustoQueryClient = new ClientImpl(connectionString);
+        kustoStreamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
 
-        kustoQueuedIngestclient = IngestClientFactory.createClient(connectionString);
+        connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
+                "ingest-" + AzureKustoHistoryProviderSettings.ClusterURL.toString(), // TODO Ohad
+                AzureKustoHistoryProviderSettings.ApplicationId.toString(),
+                AzureKustoHistoryProviderSettings.ApplicationKey.toString(),
+                AzureKustoHistoryProviderSettings.AADTenantId.toString());
 
-        kustoTreamingIngestclient = IngestClientFactory.createStreamingIngestClient(connectionString);
+        kustoQueuedIngestClient = IngestClientFactory.createClient(connectionString);
+
     }
 
     @Override

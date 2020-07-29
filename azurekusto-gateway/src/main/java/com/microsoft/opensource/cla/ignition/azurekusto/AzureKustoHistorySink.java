@@ -97,7 +97,7 @@ public class AzureKustoHistorySink implements DataSink, StoreAndForwardEngine {
 
         if (records.size() > 0) {
             logger.debug("Logging " + records.size() + " records");
-            // TODO: Store records to ADX
+            // TODO: Store records to ADX - // Ohad
         }
     }
 
