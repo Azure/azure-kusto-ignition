@@ -10,9 +10,35 @@
         <version>1.0.0</version>
     </parent>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <fasterxml.jackson.core.version>[2.9.6, 2.10.0)</fasterxml.jackson.core.version>
+        <azure-storage.version>8.3.0</azure-storage.version>
+    </properties>
+
     <artifactId>azurekusto-gateway</artifactId>
 
     <dependencies>
+        <dependency>
+            <groupId>com.microsoft.azure.kusto</groupId>
+            <artifactId>kusto-ingest</artifactId>
+            <version>${kusto-sdk-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.microsoft.azure.kusto</groupId>
+            <artifactId>kusto-data</artifactId>
+            <version>${kusto-sdk-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${fasterxml.jackson.core.version}</version>
+            <type>pom</type>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>com.inductiveautomation.ignitionsdk</groupId>
             <artifactId>ignition-common</artifactId>

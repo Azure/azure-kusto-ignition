@@ -8,7 +8,7 @@ import com.inductiveautomation.ignition.common.sqltags.history.Aggregate;
 public enum AzureKustoAggregates implements Aggregate {
     AZUREKUSTO_TOTAL,
     AZUREKUSTO_AVERAGE,
-    AZUREKUSTO_TIMEAVERAGE,
+    AZUREKUSTO_TIMEAVERAGE, //Travis, can you explain what that means?
     AZUREKUSTO_COUNT,
     AZUREKUSTO_STDEV,
     AZUREKUSTO_MINIMUM,

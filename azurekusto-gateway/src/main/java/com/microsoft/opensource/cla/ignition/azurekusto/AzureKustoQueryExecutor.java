@@ -16,6 +16,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.microsoft.azure.kusto.data.*;
+import com.microsoft.azure.kusto.ingest.*;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -34,6 +37,17 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
     private QueryController controller; // Holds the settings for what the user wants to query
     private List<ColumnQueryDefinition> tagDefs; // Holds the definition of each tag
     private List<AzureKustoHistoryTag> tags; // The list of tags to return with data
+
+    private ConnectionStringBuilder connectionString;
+
+    // A client for querying data
+    private ClientImpl              kustoQueryclient;
+
+    // A client for ingesting data in bulks
+    private IngestClient            kustoQueuedIngestclient;
+
+    // A client for ingesting row by row
+    private StreamingIngestClient   kustoTreamingIngestclient;
 
     boolean processed = false;
     long maxTSInData = -1;
@@ -101,7 +115,17 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
      */
     @Override
     public void initialize() throws Exception {
-        // TODO: Provide any initialization for ADX
+        connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
+                AzureKustoHistoryProviderSettings.ClusterURL.toString(),
+                AzureKustoHistoryProviderSettings.ApplicationId.toString(),
+                AzureKustoHistoryProviderSettings.ApplicationKey.toString(),
+                AzureKustoHistoryProviderSettings.AADTenantId.toString());
+
+        kustoQueryclient = new ClientImpl(connectionString);
+
+        kustoQueuedIngestclient = IngestClientFactory.createClient(connectionString);
+
+        kustoTreamingIngestclient = IngestClientFactory.createStreamingIngestClient(connectionString);
     }
 
     @Override
