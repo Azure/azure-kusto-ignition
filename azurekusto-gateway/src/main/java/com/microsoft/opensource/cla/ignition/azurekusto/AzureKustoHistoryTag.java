@@ -9,14 +9,26 @@ import com.inductiveautomation.ignition.gateway.sqltags.history.query.columns.Pr
  * tag path, aggregation function, and return tag.
  */
 public class AzureKustoHistoryTag {
+    private String systemName;
+    private String tagProvider;
     private String tagPath;
     private Aggregate aggregate;
     private HistoryNode tag;
 
-    public AzureKustoHistoryTag(String tagPath, Aggregate aggregate, HistoryNode tag) {
-        this.tagPath = tagPath;
+    public AzureKustoHistoryTag(AzureKustoTagValue tagValue, Aggregate aggregate, HistoryNode tag) {
+        this.systemName = tagValue.getSystemName();
+        this.tagProvider = tagValue.getTagProvider();
+        this.tagPath = tagValue.getTagPath();
         this.aggregate = aggregate;
         this.tag = tag;
+    }
+
+    public String getSystemName() {
+        return systemName;
+    }
+
+    public String getTagProvider() {
+        return tagProvider;
     }
 
     public String getTagPath() {

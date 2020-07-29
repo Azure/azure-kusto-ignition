@@ -47,13 +47,14 @@
                     <moduleId>com.microsoft.opensource.cla.ignition.azurekusto</moduleId>
                     <moduleName>${project.parent.name}</moduleName>
                     <moduleDescription>${project.description}</moduleDescription>
-                    <moduleVersion>1.0.0</moduleVersion>
+                    <moduleVersion>1.0.1</moduleVersion>
                     <requiredIgnitionVersion>7.9.0</requiredIgnitionVersion>
+                    <freeModule>true</freeModule>
 
                     <hooks>
                         <hook>
                             <scope>G</scope>
-                            <hookClass>com.microsoft.opensource.cla.ignition.azurekusto.GatewayHook</hookClass>
+                            <hookClass>com.microsoft.opensource.cla.ignition.GatewayHook</hookClass>
                         </hook>
                     </hooks>
 

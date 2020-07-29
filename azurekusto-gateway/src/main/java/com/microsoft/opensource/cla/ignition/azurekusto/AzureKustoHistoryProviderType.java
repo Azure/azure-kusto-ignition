@@ -16,7 +16,7 @@ public class AzureKustoHistoryProviderType extends SQLTagHistoryProviderType {
     public static final String TYPE_ID = "AzureKusto";
 
     public AzureKustoHistoryProviderType() {
-        super(TYPE_ID, "HistoryProvider.ProviderType.Name", "HistoryProvider.ProviderType.Desc");
+        super(TYPE_ID, "AzureKustoHistoryProvider.ProviderType.Name", "AzureKustoHistoryProvider.ProviderType.Desc");
     }
 
     @Override

@@ -4,7 +4,6 @@ import com.inductiveautomation.ignition.common.StatMetric;
 import com.inductiveautomation.ignition.common.i18n.LocalizedString;
 import com.inductiveautomation.ignition.gateway.history.*;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
-import com.microsoft.opensource.cla.ignition.TagValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +16,7 @@ import java.util.List;
  * Responsible for actually storing the data to ADX. Can either use the
  * built-in store & forward system for Ignition or use its own.
  */
-public class AzureKustoHistorySink implements DataSink, StoreAndForwardEngine {
+public class AzureKustoHistorySink implements DataSink {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private GatewayContext context;
@@ -67,7 +66,7 @@ public class AzureKustoHistorySink implements DataSink, StoreAndForwardEngine {
     public void storeData(HistoricalData data) {
         logger.debug("Received data of type '" + data.getClass().toString() + "'");
 
-        List<TagValue> records = new ArrayList<TagValue>();
+        List<AzureKustoTagValue> records = new ArrayList<AzureKustoTagValue>();
 
         List<HistoricalData> dataList;
         if (data instanceof DataTransaction) {
@@ -83,13 +82,13 @@ public class AzureKustoHistorySink implements DataSink, StoreAndForwardEngine {
                 ScanclassHistorySet dSet = (ScanclassHistorySet) d;
                 logger.debug("Scan class set '" + dSet.getSetName() + "' has '" + dSet.size() + "' tag(s)");
                 for (HistoricalTagValue historicalTagValue : dSet) {
-                    TagValue tagValue = new TagValue(context, historicalTagValue);
+                    AzureKustoTagValue tagValue = new AzureKustoTagValue(context, historicalTagValue);
                     logger.trace(tagValue.toString());
                     records.add(tagValue);
                 }
             } else if (d instanceof HistoricalTagValue) {
                 HistoricalTagValue dValue = (HistoricalTagValue) d;
-                TagValue tagValue = new TagValue(context, dValue);
+                AzureKustoTagValue tagValue = new AzureKustoTagValue(context, dValue);
                 logger.trace(tagValue.toString());
                 records.add(tagValue);
             }
