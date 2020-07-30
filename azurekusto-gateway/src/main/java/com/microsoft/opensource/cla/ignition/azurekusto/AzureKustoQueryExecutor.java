@@ -174,8 +174,6 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         } else {
             // Raw data, no aggregate function
 
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSSS");
-
             String query =
                     settings.getEventsTableName() +
                     "| where timestamp between(" + Utils.getDateLiteral(startDate) + ".." + Utils.getDateLiteral(endDate) + ")";
@@ -186,8 +184,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
 
             List<BasicQualifiedValue> values = new ArrayList<>();
 
-            mainTableResult.first();
-            do {
+            while (mainTableResult.next()) {
                 String system = mainTableResult.getString("systemName");
                 String tagProvider = mainTableResult.getString("tagProvider");
                 String tagPath = mainTableResult.getString("tagPath");
@@ -212,7 +209,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                         " timestamp");
 
 
-                values.add(new BasicQualifiedValue(mainTableResult.getDouble("value_double"), DataQuality.GOOD_DATA, new Date()));
+                //values.add(new BasicQualifiedValue(mainTableResult.getDouble("value_double"), DataQuality.GOOD_DATA, new Date()));
                 //       tag.getProcessedHistoryTag().put(values);
                 //
                 //       long resMaxTS = ...;
@@ -222,7 +219,6 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 //   }
                 //}
             }
-            while (mainTableResult.next());
         }
     }
 
