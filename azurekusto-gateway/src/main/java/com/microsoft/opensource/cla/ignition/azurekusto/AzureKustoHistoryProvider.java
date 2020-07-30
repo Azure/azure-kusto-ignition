@@ -46,7 +46,7 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
     public void startup() {
         try {
             // Create a new data sink with the same name as the provider to store data
-            sink = new AzureKustoHistorySink(name, context, settings);
+            sink = new AzureKustoHistorySink(name, context);
             context.getHistoryManager().registerSink(sink);
         } catch (Throwable e) {
             logger.error("Error registering Azure Kusto history sink", e);
@@ -132,11 +132,16 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
     }
 
     @Override
-    public TimelineSet queryDensity(List<QualifiedPath> tags, Date startDate, Date endDate, String queryId) throws Exception {
+    public TimelineSet queryDensity(
+            List<QualifiedPath> tags,
+            Date                startDate,
+            Date                endDate,
+            String              queryId) throws Exception {
         logger.debug("queryDensity(tags, startDate, endDate, queryId) called.  tags: " + tags.toString()
                 + ", startDate: " + startDate.toString() + ", endDate: " + endDate.toString() + ", queryId: " + queryId);
 
-        // TODO: Find the data density for the tags within the given range. Density is just an ordered list of timestamps for the given range with a weight.
+        // TODO: Find the data density for the tags within the given range. Density is just an ordered list of
+        //  timestamps for the given range with a weight.
         ArrayList<Timeline> timelines = new ArrayList<>();
         TimelineSet timelineSet = new TimelineSet(timelines);
         return timelineSet;
