@@ -351,3 +351,6 @@ MigrationBackup/
 .idea/*
 azurekusto-gateway/target/*
 azurekusto-build/target/*
+
+# Intelij files
+*.iml
