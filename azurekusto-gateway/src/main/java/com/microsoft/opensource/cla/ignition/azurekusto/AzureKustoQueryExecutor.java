@@ -2,6 +2,8 @@ package com.microsoft.opensource.cla.ignition.azurekusto;
 
 import com.inductiveautomation.ignition.common.QualifiedPath;
 import com.inductiveautomation.ignition.common.WellKnownPathTypes;
+import com.inductiveautomation.ignition.common.model.values.BasicQualifiedValue;
+import com.inductiveautomation.ignition.common.sqltags.BasicTagValue;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataQuality;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataTypeClass;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
@@ -14,6 +16,7 @@ import com.inductiveautomation.ignition.gateway.sqltags.history.query.columns.Pr
 import com.microsoft.azure.kusto.data.ClientImpl;
 import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
 import com.microsoft.azure.kusto.ingest.IngestClient;
+import com.microsoft.azure.kusto.ingest.IngestClientFactory;
 import com.microsoft.azure.kusto.ingest.StreamingIngestClient;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -22,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
+import com.microsoft.azure.kusto.data.*;
 
 /**
  * Responsible for actually querying the data from ADX. The query controller
@@ -126,7 +131,15 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 aadTenantId);
 
         kustoQueryClient = new ClientImpl(connectionString);
+        kustoStreamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
 
+        connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
+                "ingest-" + clusterURL, // TODO Ohad
+                applicationId,
+                applicationKey,
+                aadTenantId);
+
+        kustoQueuedIngestClient = IngestClientFactory.createClient(connectionString);
     }
 
     @Override
@@ -147,24 +160,49 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         logger.debug("startReading(blockSize, startDate, endDate) called.  blockSize: " + blockSize
                 + ", startDate: " + startDate.toString() + ", endDate: " + endDate.toString());
 
-        // TODO: Query the data from ADX and add to each to node
-        //for (AzureKustoHistoryTag tag : tags) {
-        //    if(tag.valid()) { // Only for tags with valid tag path
-        //       List<QualifiedValue> values = new ArrayList<>();
-        //       values.add(new BasicQualifiedValue(10, DataQuality.GOOD_DATA, new Date()));
-        //       tag.getProcessedHistoryTag().put(values);
-        //
-        //       long resMaxTS = ...;
-        //       if (resMaxTS > maxTSInData) {
-        //           maxTSInData = resMaxTS;
-        //       }
-        //   }
-        //}
-
         if (blockSize > 0) {
             // Block data, use aggregate function
+
+            // TODO: Query the data from ADX and add to each to node
+            //for (AzureKustoHistoryTag tag : tags) {
+            //    if(tag.valid()) { // Only for tags with valid tag path
+            //       List<QualifiedValue> values = new ArrayList<>();
+            //       values.add(new BasicQualifiedValue(10, DataQuality.GOOD_DATA, new Date()));
+            //       tag.getProcessedHistoryTag().put(values);
+            //
+            //       long resMaxTS = ...;
+            //       if (resMaxTS > maxTSInData) {
+            //           maxTSInData = resMaxTS;
+            //       }
+            //   }
+            //}
+
         } else {
             // Raw data, no aggregate function
+
+            String query =
+                    settings.getEventsTableName() +
+                    "| where timestamp between(" + startDate.toString() + ".." + endDate.toString() + ")"
+
+            KustoOperationResult results = kustoQueryClient.execute(settings.getDatabaseName(), query);
+
+            KustoResultSetTable mainTableResult = results.getPrimaryResults();
+
+            List<BasicQualifiedValue> values = new ArrayList<>();
+
+            mainTableResult.first();
+            do {
+                       values.add(new BasicQualifiedValue(mainTableResult.getDouble("value_double"), DataQuality.GOOD_DATA, new Date()));
+                //       tag.getProcessedHistoryTag().put(values);
+                //
+                //       long resMaxTS = ...;
+                //       if (resMaxTS > maxTSInData) {
+                //           maxTSInData = resMaxTS;
+                //       }
+                //   }
+                //}
+            }
+            while (mainTableResult.next());
         }
     }
 
