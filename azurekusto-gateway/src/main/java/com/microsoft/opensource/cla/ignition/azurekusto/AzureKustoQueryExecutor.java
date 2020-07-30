@@ -192,8 +192,14 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 String tagProvider = mainTableResult.getString("tagProvider");
                 String tagPath = mainTableResult.getString("tagPath");
                 Object value = mainTableResult.getObject("value");
-                Double value_double = mainTableResult.getDouble("value_double");
-                Integer value_integer = mainTableResult.getInt("value_integer");
+                Double value_double = null;
+                Integer value_integer = null;
+                if (mainTableResult.getObject("value_double")!= null) {
+                    value_double = mainTableResult.getDouble("value_double");
+                }
+                if (mainTableResult.getObject("value_integer")!= null) {
+                    value_integer = mainTableResult.getInt("value_integer");
+                }
                 LocalDateTime timestamp = mainTableResult.getKustoDateTime("timestamp");
 
                 logger.debug(
