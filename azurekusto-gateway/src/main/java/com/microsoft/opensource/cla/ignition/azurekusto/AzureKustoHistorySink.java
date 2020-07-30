@@ -153,7 +153,8 @@ public class AzureKustoHistorySink implements DataSink {
     void ingestRecords(List<AzureKustoTagValue> records) throws IngestionClientException, IngestionServiceException, IOException {
         ByteArrayOutputStream bis = new ByteArrayOutputStream();
         GZIPOutputStream gzipOutputStream = new GZIPOutputStream(bis);
-        CsvWriter csvWriter = new CsvWriter(gzipOutputStream, new CsvWriterSettings());
+        OutputStreamWriter outputStreamWriter = new OutputStreamWriter(gzipOutputStream);
+        CsvWriter csvWriter = new CsvWriter(outputStreamWriter, new CsvWriterSettings());
         // Write as csv stream
         if (records.size() > 0) {
             // TODO how much data can one such batch have - maybe we should write straight to blob
@@ -186,6 +187,9 @@ public class AzureKustoHistorySink implements DataSink {
                 csvWriter.writeRow(recordAsObjects);
             }
         }
+        csvWriter.flush();
+        gzipOutputStream.finish();
+        gzipOutputStream.close();
         StreamSourceInfo streamSourceInfo = new StreamSourceInfo(new ByteArrayInputStream(bis.toByteArray()),false);
         streamSourceInfo.setCompressionType(CompressionType.gz);
         gzipOutputStream.finish();
