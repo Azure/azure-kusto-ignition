@@ -188,7 +188,8 @@ public class AzureKustoHistorySink implements DataSink {
         }
         StreamSourceInfo streamSourceInfo = new StreamSourceInfo(new ByteArrayInputStream(bis.toByteArray()),false);
         streamSourceInfo.setCompressionType(CompressionType.gz);
-
+        gzipOutputStream.finish();
+        gzipOutputStream.close();
         // Can change here to streaming
         queuedClient.ingestFromStream(streamSourceInfo, ingestionProperties);
     }
