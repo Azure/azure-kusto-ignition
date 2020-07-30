@@ -115,7 +115,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
      */
     @Override
     public void initialize() throws Exception {
-        String clusterURL = settings.getString(AzureKustoHistoryProviderSettings.ClusterURL);
+        String clusterURL = settings.getClusterURL();
         String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
         String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
         String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
