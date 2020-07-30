@@ -14,7 +14,6 @@ import com.inductiveautomation.ignition.gateway.sqltags.history.query.columns.Pr
 import com.microsoft.azure.kusto.data.ClientImpl;
 import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
 import com.microsoft.azure.kusto.ingest.IngestClient;
-import com.microsoft.azure.kusto.ingest.IngestClientFactory;
 import com.microsoft.azure.kusto.ingest.StreamingIngestClient;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -127,15 +126,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 aadTenantId);
 
         kustoQueryClient = new ClientImpl(connectionString);
-        kustoStreamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
 
-        connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
-                "ingest-" + clusterURL, // TODO Ohad
-                applicationId,
-                applicationKey,
-                aadTenantId);
-
-        kustoQueuedIngestClient = IngestClientFactory.createClient(connectionString);
     }
 
     @Override
