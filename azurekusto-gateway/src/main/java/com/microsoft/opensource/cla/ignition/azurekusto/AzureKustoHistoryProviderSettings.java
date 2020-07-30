@@ -31,6 +31,7 @@ public class AzureKustoHistoryProviderSettings extends PersistentRecord {
     public String getApplicationKey(){return getString(ApplicationKey);}
     public String getAADTenantId(){return getString(AADTenantId);}
     public String getDatabaseName(){return getString(DatabaseName);}
+    public String getEventsTableName(){return "Events";}
 
     static {
         ProfileId.getFormMeta().setVisible(false);
