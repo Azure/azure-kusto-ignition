@@ -131,15 +131,6 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 aadTenantId);
 
         kustoQueryClient = new ClientImpl(connectionString);
-        kustoStreamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
-
-        connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
-                "ingest-" + clusterURL, // TODO Ohad
-                applicationId,
-                applicationKey,
-                aadTenantId);
-
-        kustoQueuedIngestClient = IngestClientFactory.createClient(connectionString);
     }
 
     @Override
@@ -182,7 +173,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
 
             String query =
                     settings.getEventsTableName() +
-                    "| where timestamp between(" + startDate.toString() + ".." + endDate.toString() + ")"
+                    "| where timestamp between(" + startDate.toString() + ".." + endDate.toString() + ")";
 
             KustoOperationResult results = kustoQueryClient.execute(settings.getDatabaseName(), query);
 

@@ -46,7 +46,7 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
     public void startup() {
         try {
             // Create a new data sink with the same name as the provider to store data
-            sink = new AzureKustoHistorySink(name, context);
+            sink = new AzureKustoHistorySink(name, context, settings);
             context.getHistoryManager().registerSink(sink);
         } catch (Throwable e) {
             logger.error("Error registering Azure Kusto history sink", e);

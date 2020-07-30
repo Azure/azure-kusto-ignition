@@ -82,7 +82,7 @@ public class AzureKustoHistorySink implements DataSink {
         try {
             streamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
             queuedClient = IngestClientFactory.createClient(DmConnectionString);
-            table = "StormEvents"; // TODO should be created by some logic
+            table = settings.getEventsTableName();
             ingestionProperties = new IngestionProperties(database, table);
             ingestionProperties.setDataFormat(IngestionProperties.DATA_FORMAT.csv);
 
@@ -159,22 +159,30 @@ public class AzureKustoHistorySink implements DataSink {
             // TODO how much data can one such batch have - maybe we should write straight to blob
             logger.debug("Logging " + records.size() + " records");
             for (AzureKustoTagValue record: records) {
-                Object[] recordAsObjects = new Object[6];
+                Object[] recordAsObjects = new Object[8];
                 csvWriter.writeRow();
                 if(record.getSystemName() != null) recordAsObjects[0] = record.getSystemName();
                 if(record.getTagProvider() != null) recordAsObjects[1] = record.getTagProvider();
                 if(record.getTagPath() != null) recordAsObjects[2] = record.getTagPath();
-                if(record.getSystemName() != null){
+                Object value = record.getValue();
+                if(value != null){
                     ObjectMapper objectMapper = new ObjectMapper();
-                    String valueAsJson = objectMapper.writeValueAsString(record.getValue());
+                    String valueAsJson = objectMapper.writeValueAsString(value);
                     recordAsObjects[3] = valueAsJson;
+
+                    if(value instanceof Double) {
+                        recordAsObjects[4] = (Double)value;
+                    }
+                    else if(value instanceof Integer) {
+                        recordAsObjects[5] = (Integer)value;
+                    }
                 }
 
                 if(record.getTimestamp() != null){
                     String formattedDate = simpleDateFormat.format(record.getTimestamp());
-                    recordAsObjects[4] = formattedDate;
+                    recordAsObjects[6] = formattedDate;
                 }
-                if(record.getQuality() != null) recordAsObjects[5] = record.getQuality();
+                if(record.getQuality() != null) recordAsObjects[7] = record.getQuality();
                 csvWriter.writeRow(recordAsObjects);
             }
         }
