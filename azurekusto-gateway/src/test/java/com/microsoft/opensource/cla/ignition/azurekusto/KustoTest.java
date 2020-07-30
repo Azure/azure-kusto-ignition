@@ -4,11 +4,15 @@ import com.microsoft.azure.kusto.data.exceptions.DataClientException;
 import com.microsoft.azure.kusto.data.exceptions.DataServiceException;
 import com.microsoft.azure.kusto.ingest.exceptions.IngestionClientException;
 import com.microsoft.azure.kusto.ingest.exceptions.IngestionServiceException;
+import org.joda.time.DateTime;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
+import java.text.SimpleDateFormat;
 
 public class KustoTest {
 
@@ -53,7 +57,13 @@ public class KustoTest {
 
         ClientImpl client = new ClientImpl(csb);
 
-        String queryText = "StormEvents| summarize count() by State, startofmonth(StartTime)";
+        Date dNow = DateTime.now().toDate();
+        Date dEarlier = new Date(0);
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSSS");
+
+        String queryText = "Events| where timestamp between(datetime(" +
+                simpleDateFormat.format(dEarlier) + ")..datetime(" +
+                simpleDateFormat.format(dNow) + "))";
 
         // in case we want to pass client request properties
         //ClientRequestProperties clientRequestProperties = new ClientRequestProperties();
@@ -64,5 +74,31 @@ public class KustoTest {
         );
         KustoResultSetTable mainTableResult = results.getPrimaryResults();
         System.out.println(String.format("Kusto sent back %s rows.", mainTableResult.count()));
+
+
+        mainTableResult = results.getPrimaryResults();
+
+        mainTableResult.first();
+        do {
+            String system = mainTableResult.getString("systemName");
+            String tagProvider = mainTableResult.getString("tagProvider");
+            String tagPath = mainTableResult.getString("tagPath");
+            Object value = mainTableResult.getObject("value");
+            Double value_double = mainTableResult.getDouble("value_double");
+            Integer value_integer = mainTableResult.getInt("value_integer");
+            LocalDateTime timestamp = mainTableResult.getKustoDateTime("timestamp");
+
+            System.out.println(
+                            "System:" + system +
+                            " tagProvider:" +  tagProvider +
+                            " tagPath:" +  tagPath +
+                            " Value:" +  value +
+                            " value_double:" +  value_double +
+                            " value_integer:" +  value_integer +
+                            " timestamp");
+        }
+        while (mainTableResult.next());
+
+
     }
 }
