@@ -22,11 +22,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import com.microsoft.azure.kusto.data.*;
+import com.microsoft.opensource.cla.ignition.Utils;
 
 /**
  * Responsible for actually querying the data from ADX. The query controller
@@ -171,9 +174,11 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         } else {
             // Raw data, no aggregate function
 
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSSS");
+
             String query =
                     settings.getEventsTableName() +
-                    "| where timestamp between(" + startDate.toString() + ".." + endDate.toString() + ")";
+                    "| where timestamp between(" + Utils.getDateLiteral(startDate) + ".." + Utils.getDateLiteral(endDate) + ")";
 
             KustoOperationResult results = kustoQueryClient.execute(settings.getDatabaseName(), query);
 
@@ -183,7 +188,25 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
 
             mainTableResult.first();
             do {
-                       values.add(new BasicQualifiedValue(mainTableResult.getDouble("value_double"), DataQuality.GOOD_DATA, new Date()));
+                String system = mainTableResult.getString("systemName");
+                String tagProvider = mainTableResult.getString("tagProvider");
+                String tagPath = mainTableResult.getString("tagPath");
+                Object value = mainTableResult.getObject("value");
+                Double value_double = mainTableResult.getDouble("value_double");
+                Integer value_integer = mainTableResult.getInt("value_integer");
+                LocalDateTime timestamp = mainTableResult.getKustoDateTime("timestamp");
+
+                logger.debug(
+                        "Reading: System:" + system +
+                        " tagProvider:" +  tagProvider +
+                        " tagPath:" +  tagPath +
+                        " Value:" +  value +
+                        " value_double:" +  value_double +
+                        " value_integer:" +  value_integer +
+                        " timestamp");
+
+
+                values.add(new BasicQualifiedValue(mainTableResult.getDouble("value_double"), DataQuality.GOOD_DATA, new Date()));
                 //       tag.getProcessedHistoryTag().put(values);
                 //
                 //       long resMaxTS = ...;
