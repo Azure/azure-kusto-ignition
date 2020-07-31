@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -154,8 +155,71 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         logger.debug("startReading(blockSize, startDate, endDate) called.  blockSize: " + blockSize
                 + ", startDate: " + startDate.toString() + ", endDate: " + endDate.toString());
 
+        String queryPrefix =
+                "let blocks = " + blockSize + ";\n" +
+                "let startTime = "+ Utils.getDateLiteral(startDate) + ";\n" +
+                "let endTime = "+ Utils.getDateLiteral(endDate) + ";\n";
+
+        String queryData = settings.getEventsTableName() + "| where timestamp between(startTime..endTime)";
+
+        String querySuffix = "| sort by systemName, tagProvider, tagPath, timestamp";
+
         if (blockSize > 0) {
             // Block data, use aggregate function
+            queryPrefix = queryPrefix +
+            "let duration = datetime_diff('Microsecond', endTime, startTime);\n" +
+            "let bin_Size = duration/blocks;\n";
+
+            queryData = queryData + "| summarize value = avg(value_double) by systemName, tagProvider, tagPath, bin_at(timestamp, 1microsecond * bin_Size, startTime)";
+        }
+
+        // Raw data, no aggregate function
+
+        String query = queryPrefix + queryData + querySuffix;
+
+        logger.debug("Issuing query:" + query);
+
+        KustoOperationResult results = kustoQueryClient.execute(settings.getDatabaseName(), query);
+
+        KustoResultSetTable mainTableResult = results.getPrimaryResults();
+
+        List<BasicQualifiedValue> values = new ArrayList<>();
+
+        while (mainTableResult.next()) {
+            String system = mainTableResult.getString("systemName");
+            String tagProvider = mainTableResult.getString("tagProvider");
+            String tagPath = mainTableResult.getString("tagPath");
+            Object value = mainTableResult.getObject("value");
+            Double value_double = null;
+            Integer value_integer = null;
+            if (mainTableResult.getObject("value_double")!= null) {
+                value_double = mainTableResult.getDouble("value_double");
+            }
+            if (mainTableResult.getObject("value_integer")!= null) {
+                value_integer = mainTableResult.getInt("value_integer");
+            }
+            Timestamp timestamp = mainTableResult.getTimestamp("timestamp");
+
+            logger.debug(
+                    "Reading: System:" + system +
+                            " tagProvider:" +  tagProvider +
+                            " tagPath:" +  tagPath +
+                            " Value:" +  value +
+                            " value_double:" +  value_double +
+                            " value_integer:" +  value_integer +
+                            " timestamp:" + timestamp);
+
+
+            values.add(new BasicQualifiedValue(mainTableResult.getDouble("value_double"), DataQuality.GOOD_DATA, new Date()));
+            //       tag.getProcessedHistoryTag().put(values);
+            //
+            //       long resMaxTS = ...;
+            //       if (resMaxTS > maxTSInData) {
+            //           maxTSInData = resMaxTS;
+            //       }
+            //   }
+            //}
+
 
             // TODO: Query the data from ADX and add to each to node
             //for (AzureKustoHistoryTag tag : tags) {
@@ -171,54 +235,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
             //   }
             //}
 
-        } else {
-            // Raw data, no aggregate function
 
-            String query =
-                    settings.getEventsTableName() +
-                    "| where timestamp between(" + Utils.getDateLiteral(startDate) + ".." + Utils.getDateLiteral(endDate) + ")";
-
-            KustoOperationResult results = kustoQueryClient.execute(settings.getDatabaseName(), query);
-
-            KustoResultSetTable mainTableResult = results.getPrimaryResults();
-
-            List<BasicQualifiedValue> values = new ArrayList<>();
-
-            while (mainTableResult.next()) {
-                String system = mainTableResult.getString("systemName");
-                String tagProvider = mainTableResult.getString("tagProvider");
-                String tagPath = mainTableResult.getString("tagPath");
-                Object value = mainTableResult.getObject("value");
-                Double value_double = null;
-                Integer value_integer = null;
-                if (mainTableResult.getObject("value_double")!= null) {
-                    value_double = mainTableResult.getDouble("value_double");
-                }
-                if (mainTableResult.getObject("value_integer")!= null) {
-                    value_integer = mainTableResult.getInt("value_integer");
-                }
-                LocalDateTime timestamp = mainTableResult.getKustoDateTime("timestamp");
-
-                logger.debug(
-                        "Reading: System:" + system +
-                        " tagProvider:" +  tagProvider +
-                        " tagPath:" +  tagPath +
-                        " Value:" +  value +
-                        " value_double:" +  value_double +
-                        " value_integer:" +  value_integer +
-                        " timestamp");
-
-
-                //values.add(new BasicQualifiedValue(mainTableResult.getDouble("value_double"), DataQuality.GOOD_DATA, new Date()));
-                //       tag.getProcessedHistoryTag().put(values);
-                //
-                //       long resMaxTS = ...;
-                //       if (resMaxTS > maxTSInData) {
-                //           maxTSInData = resMaxTS;
-                //       }
-                //   }
-                //}
-            }
         }
     }
 
