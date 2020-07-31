@@ -1,4 +1,7 @@
 package com.microsoft.opensource.cla.ignition.azurekusto;
+import com.inductiveautomation.ignition.gateway.model.GatewayContext;
+import com.inductiveautomation.ignition.gateway.sqltags.history.query.ColumnQueryDefinition;
+import com.inductiveautomation.ignition.gateway.sqltags.history.query.QueryController;
 import com.microsoft.azure.kusto.data.*;
 import com.microsoft.azure.kusto.data.exceptions.DataClientException;
 import com.microsoft.azure.kusto.data.exceptions.DataServiceException;
@@ -8,6 +11,8 @@ import org.joda.time.DateTime;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,7 +21,7 @@ import java.text.SimpleDateFormat;
 
 public class KustoTest {
 
-    public static void main(String[] args) throws IngestionClientException, IOException, IngestionServiceException, DataClientException, DataServiceException, URISyntaxException {
+    public static void main(String[] args) throws Exception {
 
         // Ingest test without context
         String clusterName = System.getProperty("cluster","https://ignitionadxpoc.eastus.kusto.windows.net");
@@ -48,6 +53,14 @@ public class KustoTest {
 
         kusto.ingestRecords(recs);
 
+/*
+        AzureKustoQueryExecutor kustoExecutor = new AzureKustoQueryExecutor(null, settings,
+                null, //List< ColumnQueryDefinition > tagDefs,
+                null);
+
+        kustoExecutor.startReading();
+*/
+
         ConnectionStringBuilder csb = ConnectionStringBuilder.createWithAadApplicationCredentials(
                 clusterName,
                 appId,
@@ -64,6 +77,8 @@ public class KustoTest {
         String queryText = "Events| where timestamp between(datetime(" +
                 simpleDateFormat.format(dEarlier) + ")..datetime(" +
                 simpleDateFormat.format(dNow) + "))";
+
+        System.out.println(queryText);
 
         // in case we want to pass client request properties
         //ClientRequestProperties clientRequestProperties = new ClientRequestProperties();
@@ -92,7 +107,8 @@ public class KustoTest {
             if (mainTableResult.getObject("value_integer")!= null) {
                 value_integer = mainTableResult.getInt("value_integer");
             }
-            LocalDateTime timestamp = mainTableResult.getKustoDateTime("timestamp");
+
+            Timestamp timestamp = mainTableResult.getTimestamp("timestamp");
 
             System.out.println(
                             "System:" + system +
@@ -101,7 +117,12 @@ public class KustoTest {
                             " Value:" +  value +
                             " value_double:" +  value_double +
                             " value_integer:" +  value_integer +
-                            " timestamp");
+                            " timestamp:" + timestamp);
+
+            try {
+                LocalDateTime ktimestamp = mainTableResult.getKustoDateTime("timestamp"); //TODO - Fix this with format 2020-07-31T21:35:23.00006Z
+            } catch (Exception e) {
+            }
         }
     }
 }
