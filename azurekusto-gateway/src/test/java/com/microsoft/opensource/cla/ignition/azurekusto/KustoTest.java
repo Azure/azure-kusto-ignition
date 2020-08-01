@@ -1,4 +1,5 @@
 package com.microsoft.opensource.cla.ignition.azurekusto;
+import com.inductiveautomation.ignition.common.sqltags.history.TagHistoryQueryParams;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.ColumnQueryDefinition;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.QueryController;
@@ -16,10 +17,12 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.text.SimpleDateFormat;
+import java.util.List;
 
-public class KustoTest {
+public class KustoTest{
 
     public static void main(String[] args) throws Exception {
 
@@ -53,13 +56,15 @@ public class KustoTest {
 
         kusto.ingestRecords(recs);
 
-/*
+        QueryController controller = new KustoQueryController();
+        List<ColumnQueryDefinition> tagDefs = new ArrayList<ColumnQueryDefinition>();
+
         AzureKustoQueryExecutor kustoExecutor = new AzureKustoQueryExecutor(null, settings,
                 null, //List< ColumnQueryDefinition > tagDefs,
-                null);
+                controller);
 
         kustoExecutor.startReading();
-*/
+
 
         ConnectionStringBuilder csb = ConnectionStringBuilder.createWithAadApplicationCredentials(
                 clusterName,
