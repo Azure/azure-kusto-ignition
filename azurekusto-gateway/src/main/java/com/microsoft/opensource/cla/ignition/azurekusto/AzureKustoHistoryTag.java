@@ -9,48 +9,36 @@ import com.inductiveautomation.ignition.gateway.sqltags.history.query.columns.Pr
  * tag path, aggregation function, and return tag.
  */
 public class AzureKustoHistoryTag {
-    private String systemName;
-    private String tagProvider;
-    private String tagPath;
+    private AzureKustoTag tag;
     private Aggregate aggregate;
-    private HistoryNode tag;
+    private HistoryNode historyTag;
 
-    public AzureKustoHistoryTag(AzureKustoTagValue tagValue, Aggregate aggregate, HistoryNode tag) {
-        this.systemName = tagValue.getSystemName();
-        this.tagProvider = tagValue.getTagProvider();
-        this.tagPath = tagValue.getTagPath();
-        this.aggregate = aggregate;
+    public AzureKustoHistoryTag(AzureKustoTag tag, Aggregate aggregate, HistoryNode historyTag) {
         this.tag = tag;
+        this.aggregate = aggregate;
+        this.historyTag = historyTag;
     }
 
-    public String getSystemName() {
-        return systemName;
-    }
-
-    public String getTagProvider() {
-        return tagProvider;
-    }
-
-    public String getTagPath() {
-        return tagPath;
+    public AzureKustoTag getTag() {
+        return tag;
     }
 
     public Aggregate getAggregate() {
         return aggregate;
     }
 
-    public HistoryNode getTag() {
-        return tag;
+    public HistoryNode getHistoryTag() {
+        return historyTag;
     }
 
     public ProcessedHistoryColumn getProcessedHistoryTag() {
-        return (ProcessedHistoryColumn) tag;
+        return (ProcessedHistoryColumn) historyTag;
     }
 
     /**
      * Valid only for ProcessedHistoryColumn type since the tag path is valid.
      */
     public boolean valid() {
-        return tag instanceof ProcessedHistoryColumn;
+        return historyTag instanceof ProcessedHistoryColumn;
     }
 }

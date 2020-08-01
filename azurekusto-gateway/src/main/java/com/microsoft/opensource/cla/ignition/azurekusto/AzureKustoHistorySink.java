@@ -6,18 +6,19 @@ import com.inductiveautomation.ignition.common.i18n.LocalizedString;
 import com.inductiveautomation.ignition.gateway.history.*;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
+import com.microsoft.azure.kusto.ingest.IngestClient;
 import com.microsoft.azure.kusto.ingest.IngestClientFactory;
 import com.microsoft.azure.kusto.ingest.IngestionProperties;
+import com.microsoft.azure.kusto.ingest.StreamingIngestClient;
 import com.microsoft.azure.kusto.ingest.exceptions.IngestionClientException;
 import com.microsoft.azure.kusto.ingest.exceptions.IngestionServiceException;
 import com.microsoft.azure.kusto.ingest.source.CompressionType;
 import com.microsoft.azure.kusto.ingest.source.StreamSourceInfo;
+import com.microsoft.opensource.cla.ignition.Utils;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.microsoft.azure.kusto.ingest.IngestClient;
-import com.microsoft.azure.kusto.ingest.StreamingIngestClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -25,11 +26,11 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.zip.GZIPOutputStream;
-
-import com.microsoft.opensource.cla.ignition.Utils;
 
 /**
  * Responsible for actually storing the data to ADX. Can either use the
@@ -47,6 +48,7 @@ public class AzureKustoHistorySink implements DataSink {
     private final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSSS");
 
     private IngestionProperties ingestionProperties;
+
     public AzureKustoHistorySink(String pipelineName, GatewayContext context, AzureKustoHistoryProviderSettings settings) {
         this.pipelineName = pipelineName;
         this.context = context;
@@ -147,6 +149,7 @@ public class AzureKustoHistorySink implements DataSink {
                 records.add(tagValue);
             }
         }
+
         ingestRecords(records);
     }
 
@@ -159,38 +162,37 @@ public class AzureKustoHistorySink implements DataSink {
         if (records.size() > 0) {
             // TODO how much data can one such batch have - maybe we should write straight to blob
             logger.debug("Logging " + records.size() + " records");
-            for (AzureKustoTagValue record: records) {
+            for (AzureKustoTagValue record : records) {
                 Object[] recordAsObjects = new Object[8];
                 csvWriter.writeRow();
-                if(record.getSystemName() != null) recordAsObjects[0] = record.getSystemName();
-                if(record.getTagProvider() != null) recordAsObjects[1] = record.getTagProvider();
-                if(record.getTagPath() != null) recordAsObjects[2] = record.getTagPath();
+                if (record.getTag().getSystemName() != null) recordAsObjects[0] = record.getTag().getSystemName();
+                if (record.getTag().getTagProvider() != null) recordAsObjects[1] = record.getTag().getTagProvider();
+                if (record.getTag().getTagPath() != null) recordAsObjects[2] = record.getTag().getTagPath();
                 Object value = record.getValue();
-                if(value != null){
+                if (value != null) {
                     ObjectMapper objectMapper = new ObjectMapper();
                     String valueAsJson = objectMapper.writeValueAsString(value);
                     recordAsObjects[3] = valueAsJson;
 
-                    if(value instanceof Double) {
-                        recordAsObjects[4] = (Double)value;
-                    }
-                    else if(value instanceof Integer) {
-                        recordAsObjects[5] = (Integer)value;
+                    if (value instanceof Double) {
+                        recordAsObjects[4] = (Double) value;
+                    } else if (value instanceof Integer) {
+                        recordAsObjects[5] = (Integer) value;
                     }
                 }
 
-                if(record.getTimestamp() != null){
+                if (record.getTimestamp() != null) {
                     String formattedDate = simpleDateFormat.format(record.getTimestamp());
                     recordAsObjects[6] = formattedDate;
                 }
-                if(record.getQuality() != null) recordAsObjects[7] = record.getQuality();
+                if (record.getQuality() != null) recordAsObjects[7] = record.getQuality();
                 csvWriter.writeRow(recordAsObjects);
             }
         }
         csvWriter.flush();
         gzipOutputStream.finish();
         gzipOutputStream.close();
-        StreamSourceInfo streamSourceInfo = new StreamSourceInfo(new ByteArrayInputStream(bis.toByteArray()),false);
+        StreamSourceInfo streamSourceInfo = new StreamSourceInfo(new ByteArrayInputStream(bis.toByteArray()), false);
         streamSourceInfo.setCompressionType(CompressionType.gz);
         gzipOutputStream.finish();
         gzipOutputStream.close();
