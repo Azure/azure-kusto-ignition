@@ -14,6 +14,7 @@ public enum AzureKustoAggregates implements Aggregate {
     AZUREKUSTO_MINIMUM,
     AZUREKUSTO_MAXIMUM,
     AZUREKUSTO_VARIANCE,
+    AZUREKUSTO_ANY,
     AZUREKUSTO_RANGE,
     AZUREKUSTO_DURATIONGOOD,
     AZUREKUSTO_DURATIONBAD,
@@ -28,6 +29,30 @@ public enum AzureKustoAggregates implements Aggregate {
     @Override
     public String getName() {
         return name();
+        // TODO is this how the UI gets the nice names?
+
+    }
+
+    public String getKqlFunction() {
+        if(ordinal() == AZUREKUSTO_TOTAL.ordinal()) {return "sum";}
+        if(ordinal() == AZUREKUSTO_AVERAGE.ordinal()) {return "avg";}
+        if(ordinal() == AZUREKUSTO_COUNT.ordinal()) {return "count";}
+        if(ordinal() == AZUREKUSTO_STDEV.ordinal()) {return "stdev";}
+        if(ordinal() == AZUREKUSTO_MINIMUM.ordinal()) {return "min";}
+        if(ordinal() == AZUREKUSTO_MAXIMUM.ordinal()) { return "max";}
+        if(ordinal() == AZUREKUSTO_VARIANCE.ordinal()) { return "variance";}
+        if(ordinal() == AZUREKUSTO_ANY.ordinal()) { return "any";}
+
+        return null;
+        // TODO - How to communicate the right names for the UI?
+        // TODO - Add the rest of the Kusto aggregates
+        // TODO - Add the rest of Ignition asks
+        //        AZUREKUSTO_TIMEAVERAGE
+        //        AZUREKUSTO_RANGE,
+        //        AZUREKUSTO_DURATIONGOOD,
+        //        AZUREKUSTO_DURATIONBAD,
+        //        AZUREKUSTO_PERCENTGOOD,
+        //        AZUREKUSTO_PERCENTBAD;
     }
 
     @Override

@@ -4,6 +4,14 @@ import com.inductiveautomation.ignition.common.sqltags.history.TagHistoryQueryPa
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.QueryController;
 
 public class KustoQueryController implements QueryController {
+
+    public KustoQueryController()
+    {
+        params = new KustoTestTagHistoryQueryParams();
+    }
+
+    TagHistoryQueryParams params;
+
     public String getQueryId() {
         System.out.println("getQueryId called");
 
@@ -36,9 +44,10 @@ public class KustoQueryController implements QueryController {
     }
 
 
-    public TagHistoryQueryParams getQueryParameters() {
+    public TagHistoryQueryParams getQueryParameters()
+    {
         System.out.println("getQueryParameters called");
 
-        return null;
+        return params;
     }
 }
