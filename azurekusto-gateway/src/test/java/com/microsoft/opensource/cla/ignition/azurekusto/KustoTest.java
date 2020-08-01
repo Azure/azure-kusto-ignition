@@ -42,17 +42,12 @@ public class KustoTest{
         AzureKustoHistorySink kusto = new AzureKustoHistorySink("kusto", null, settings);
         kusto.startup();
         ArrayList<AzureKustoTagValue> recs = new ArrayList<>();
-        AzureKustoTagValue azureKustoTagValue = new AzureKustoTagValue();
-        azureKustoTagValue.setSystemName("kustoIgnitoin");
-        azureKustoTagValue.setTagProvider("ohad and uri");
-        azureKustoTagValue.setTagPath("toKusto");
-        azureKustoTagValue.setValue(new Object(){
+        AzureKustoTag tag = new AzureKustoTag("kustoIgnitoin", "ohad and uri","toKusto");
+        AzureKustoTagValue tagValue = new AzureKustoTagValue(tag, new Object(){
             public String name = "travis";
             public int x = 1;
-        });
-        azureKustoTagValue.setTimestamp(new Date());
-        azureKustoTagValue.setQuality(1000000);
-        recs.add(azureKustoTagValue);
+        }, new Date(), 1000000);
+        recs.add(tagValue);
 
         kusto.ingestRecords(recs);
 

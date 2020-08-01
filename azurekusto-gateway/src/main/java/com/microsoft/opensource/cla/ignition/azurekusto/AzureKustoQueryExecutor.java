@@ -3,7 +3,6 @@ package com.microsoft.opensource.cla.ignition.azurekusto;
 import com.inductiveautomation.ignition.common.QualifiedPath;
 import com.inductiveautomation.ignition.common.WellKnownPathTypes;
 import com.inductiveautomation.ignition.common.model.values.BasicQualifiedValue;
-import com.inductiveautomation.ignition.common.sqltags.BasicTagValue;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataQuality;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataTypeClass;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
@@ -15,22 +14,17 @@ import com.inductiveautomation.ignition.gateway.sqltags.history.query.columns.Er
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.columns.ProcessedHistoryColumn;
 import com.microsoft.azure.kusto.data.ClientImpl;
 import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
+import com.microsoft.azure.kusto.data.KustoOperationResult;
+import com.microsoft.azure.kusto.data.KustoResultSetTable;
 import com.microsoft.azure.kusto.ingest.IngestClient;
-import com.microsoft.azure.kusto.ingest.IngestClientFactory;
 import com.microsoft.azure.kusto.ingest.StreamingIngestClient;
+import com.microsoft.opensource.cla.ignition.Utils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import com.microsoft.azure.kusto.data.*;
-import com.microsoft.opensource.cla.ignition.Utils;
+import java.util.*;
 
 /**
  * Responsible for actually querying the data from ADX. The query controller
@@ -45,18 +39,12 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
     private AzureKustoHistoryProviderSettings settings; // Holds the settings for the current provider, needed to connect to ADX
     private QueryController controller; // Holds the settings for what the user wants to query
     private List<ColumnQueryDefinition> tagDefs; // Holds the definition of each tag
-    private List<AzureKustoHistoryTag> tags; // The list of tags to return with data
+    private Map<AzureKustoTag, AzureKustoHistoryTag> tags; // The list of tags to return with data
 
     private ConnectionStringBuilder connectionString;
-
-    // A client for querying data
-    private ClientImpl kustoQueryClient;
-
-    // A client for ingesting data in bulks
-    private IngestClient kustoQueuedIngestClient;
-
-    // A client for ingesting row by row
-    private StreamingIngestClient kustoStreamingIngestClient;
+    private ClientImpl kustoQueryClient; // A client for querying data
+    private IngestClient kustoQueuedIngestClient; // A client for ingesting data in bulks
+    private StreamingIngestClient kustoStreamingIngestClient; // A client for ingesting row by row
 
     boolean processed = false;
     long maxTSInData = -1;
@@ -66,8 +54,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         this.settings = settings;
         this.controller = controller;
         this.tagDefs = tagDefs;
-
-        this.tags = new ArrayList<>();
+        this.tags = new HashMap<>();
 
         initTags();
     }
@@ -80,29 +67,28 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         boolean isRaw = controller.getBlockSize() <= 0;
 
         for (ColumnQueryDefinition c : tagDefs) {
-            HistoryNode tag;
+            HistoryNode historyTag;
 
             QualifiedPath qPath = c.getPath();
-            String itemId = qPath.getPathComponent(WellKnownPathTypes.Tag);
-
-            AzureKustoTagValue tagValue = new AzureKustoTagValue();
             String driver = qPath.getPathComponent(WellKnownPathTypes.Driver);
             String[] parts = driver.split(":");
-            tagValue.setSystemName(parts[0]);
-            tagValue.setTagProvider(parts[1]);
-            tagValue.setTagPath(itemId);
+            String systemName = parts[0];
+            String tagProvider = parts[1];
+            String tagPath = qPath.getPathComponent(WellKnownPathTypes.Tag);
 
-            if (StringUtils.isBlank(itemId)) {
+            AzureKustoTag tag = new AzureKustoTag(systemName, tagProvider, tagPath);
+
+            if (StringUtils.isBlank(tagPath)) {
                 // We set the data type to Integer here, because if the column is going to be errored, at least integer types won't cause charts to complain.
-                tag = new ErrorHistoryColumn(c.getColumnName(), DataTypeClass.Integer, DataQuality.CONFIG_ERROR);
+                historyTag = new ErrorHistoryColumn(c.getColumnName(), DataTypeClass.Integer, DataQuality.CONFIG_ERROR);
                 logger.debug(controller.getQueryId() + ": The item path '" + c.getPath() + "' does not have a valid tag path component.");
             } else {
-                tag = new ProcessedHistoryColumn(c.getColumnName(), isRaw);
+                historyTag = new ProcessedHistoryColumn(c.getColumnName(), isRaw);
                 // Set data type to float by default, we can change this later if needed
-                ((ProcessedHistoryColumn) tag).setDataType(DataTypeClass.Float);
+                ((ProcessedHistoryColumn) historyTag).setDataType(DataTypeClass.Float);
             }
 
-            tags.add(new AzureKustoHistoryTag(tagValue, c.getAggregate(), tag));
+            tags.put(tag, new AzureKustoHistoryTag(tag, c.getAggregate(), historyTag));
         }
     }
 
@@ -112,8 +98,8 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
     @Override
     public List<? extends HistoryNode> getColumnNodes() {
         List<HistoryNode> nodes = new ArrayList<>();
-        for (AzureKustoHistoryTag node : tags) {
-            nodes.add(node.getTag());
+        for (AzureKustoTag tag : tags.keySet()) {
+            nodes.add(tags.get(tag).getHistoryTag());
         }
         return nodes;
     }
@@ -157,85 +143,55 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
 
         String queryPrefix =
                 "let blocks = " + blockSize + ";\n" +
-                "let startTime = "+ Utils.getDateLiteral(startDate) + ";\n" +
-                "let endTime = "+ Utils.getDateLiteral(endDate) + ";\n";
+                        "let startTime = " + Utils.getDateLiteral(startDate) + ";\n" +
+                        "let endTime = " + Utils.getDateLiteral(endDate) + ";\n";
+        String queryData = settings.getEventsTableName() + "| where timestamp between(startTime..endTime) ";
 
-        String queryData = settings.getEventsTableName() + "| where timestamp between(startTime..endTime)";
-
-        String querySuffix = "| sort by systemName, tagProvider, tagPath, timestamp";
-
-        if (blockSize > 0) {
-            // Block data, use aggregate function
-            queryPrefix = queryPrefix +
-            "let duration = datetime_diff('Microsecond', endTime, startTime);\n" +
-            "let bin_Size = duration/blocks;\n";
-
-            queryData = queryData + "| summarize value = avg(value_double) by systemName, tagProvider, tagPath, bin_at(timestamp, 1microsecond * bin_Size, startTime)";
+        queryData += "| where ";
+        AzureKustoTag[] tagKeys = tags.keySet().toArray(new AzureKustoTag[]{});
+        for(int i = 0; i < tagKeys.length; i++){
+            AzureKustoTag tag = tagKeys[i];
+            queryData += "(systemName has \"" + tag.getSystemName() + "\" and tagProvider has \"" + tag.getTagProvider() + "\" and tagPath has \"" + tag.getTagPath() + "\")";
+            if(i < (tagKeys.length - 1)){
+                queryData += " or ";
+            }
         }
 
-        // Raw data, no aggregate function
+        String querySuffix = "| sort by systemName, tagProvider, tagPath, timestamp asc";
+
+        // TODO: Implement all aggregate functions
+        if (blockSize > 0) {
+            // Block data, use aggregate function
+            queryData = queryData + "| summarize value = avg(value_double), quality = min(quality) by systemName, tagProvider, tagPath, bin_at(timestamp, 1millisecond * blocks, startTime)";
+        }
 
         String query = queryPrefix + queryData + querySuffix;
-
         logger.debug("Issuing query:" + query);
 
         KustoOperationResult results = kustoQueryClient.execute(settings.getDatabaseName(), query);
-
         KustoResultSetTable mainTableResult = results.getPrimaryResults();
 
-        List<BasicQualifiedValue> values = new ArrayList<>();
-
         while (mainTableResult.next()) {
-            String system = mainTableResult.getString("systemName");
+            String systemName = mainTableResult.getString("systemName");
             String tagProvider = mainTableResult.getString("tagProvider");
             String tagPath = mainTableResult.getString("tagPath");
+            AzureKustoTag tag = new AzureKustoTag(systemName, tagProvider, tagPath);
+
             Object value = mainTableResult.getObject("value");
-            Double value_double = null;
-            Integer value_integer = null;
-            if (mainTableResult.getObject("value_double")!= null) {
-                value_double = mainTableResult.getDouble("value_double");
-            }
-            if (mainTableResult.getObject("value_integer")!= null) {
-                value_integer = mainTableResult.getInt("value_integer");
-            }
             Timestamp timestamp = mainTableResult.getTimestamp("timestamp");
+            Integer quality = mainTableResult.getInt("quality");
 
             logger.debug(
-                    "Reading: System:" + system +
-                            " tagProvider:" +  tagProvider +
-                            " tagPath:" +  tagPath +
-                            " Value:" +  value +
-                            " value_double:" +  value_double +
-                            " value_integer:" +  value_integer +
+                    "Reading: System:" + systemName +
+                            " tagProvider:" + tagProvider +
+                            " tagPath:" + tagPath +
+                            " Value:" + value +
                             " timestamp:" + timestamp);
 
-
-            values.add(new BasicQualifiedValue(mainTableResult.getDouble("value_double"), DataQuality.GOOD_DATA, new Date()));
-            //       tag.getProcessedHistoryTag().put(values);
-            //
-            //       long resMaxTS = ...;
-            //       if (resMaxTS > maxTSInData) {
-            //           maxTSInData = resMaxTS;
-            //       }
-            //   }
-            //}
-
-
-            // TODO: Query the data from ADX and add to each to node
-            //for (AzureKustoHistoryTag tag : tags) {
-            //    if(tag.valid()) { // Only for tags with valid tag path
-            //       List<QualifiedValue> values = new ArrayList<>();
-            //       values.add(new BasicQualifiedValue(10, DataQuality.GOOD_DATA, new Date()));
-            //       tag.getProcessedHistoryTag().put(values);
-            //
-            //       long resMaxTS = ...;
-            //       if (resMaxTS > maxTSInData) {
-            //           maxTSInData = resMaxTS;
-            //       }
-            //   }
-            //}
-
-
+            tags.get(tag).getProcessedHistoryTag().put(new BasicQualifiedValue(value, DataQuality.fromIntValue(quality), new Date(timestamp.getTime())));
+            if (timestamp.getTime() > maxTSInData) {
+                maxTSInData = timestamp.getTime();
+            }
         }
     }
 
