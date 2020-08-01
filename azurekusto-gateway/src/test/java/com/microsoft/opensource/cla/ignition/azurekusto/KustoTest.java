@@ -1,6 +1,10 @@
 package com.microsoft.opensource.cla.ignition.azurekusto;
+import com.inductiveautomation.ignition.common.QualifiedPath;
+import com.inductiveautomation.ignition.common.WellKnownPathTypes;
+import com.inductiveautomation.ignition.common.sqltags.history.TagHistoryQueryParams;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.ColumnQueryDefinition;
+import com.inductiveautomation.ignition.gateway.sqltags.history.query.HistoryNode;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.QueryController;
 import com.microsoft.azure.kusto.data.*;
 import com.microsoft.azure.kusto.data.exceptions.DataClientException;
@@ -16,10 +20,12 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.text.SimpleDateFormat;
+import java.util.List;
 
-public class KustoTest {
+public class KustoTest{
 
     public static void main(String[] args) throws Exception {
 
@@ -48,13 +54,32 @@ public class KustoTest {
 
         kusto.ingestRecords(recs);
 
-/*
+        QueryController controller = new KustoQueryController();
+        List<ColumnQueryDefinition> tagDefs = new ArrayList<ColumnQueryDefinition>();
+
+        QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, "ADX").setDriver("Ignition-Azure-Kusto-Test:default").setTag("Ramp/Ramp1");
+
+        QualifiedPath q0 = builder.build();
+
+        ColumnQueryDefinition c0 = new ColumnQueryDefinition(q0, null);
+        ColumnQueryDefinition c1 = new ColumnQueryDefinition(q0, AzureKustoAggregates.AZUREKUSTO_AVERAGE);
+
+        tagDefs.add(c0);
+        tagDefs.add(c1);
+
         AzureKustoQueryExecutor kustoExecutor = new AzureKustoQueryExecutor(null, settings,
-                null, //List< ColumnQueryDefinition > tagDefs,
-                null);
+                tagDefs,
+                controller);
+
+        kustoExecutor.initialize();
 
         kustoExecutor.startReading();
-*/
+
+        for (HistoryNode hn : kustoExecutor.getColumnNodes())
+        {
+            System.out.println("Found record: " + hn.getName() + " type: " + hn.getDataType() + " value:" + hn.getValue(0,0) );
+        }
+
 
         ConnectionStringBuilder csb = ConnectionStringBuilder.createWithAadApplicationCredentials(
                 clusterName,

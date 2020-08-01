@@ -162,7 +162,9 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         // TODO: Implement all aggregate functions
         if (blockSize > 0) {
             // Block data, use aggregate function
-            queryData = queryData + "| summarize value = avg(value_double), quality = min(quality) by systemName, tagProvider, tagPath, bin_at(timestamp, 1millisecond * blocks, startTime)";
+            String function = ((AzureKustoAggregates)controller.getQueryParameters().getAggregationMode()).getKqlFunction();
+
+            queryData = queryData + "| summarize value = " + function + "(value_double), quality = min(quality) by systemName, tagProvider, tagPath, bin_at(timestamp, 1millisecond * blocks, startTime)";
         }
 
         String query = queryPrefix + queryData + querySuffix;
