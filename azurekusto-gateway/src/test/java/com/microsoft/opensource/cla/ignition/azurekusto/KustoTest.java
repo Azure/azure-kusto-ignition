@@ -1,6 +1,9 @@
 package com.microsoft.opensource.cla.ignition.azurekusto;
 import com.inductiveautomation.ignition.common.QualifiedPath;
 import com.inductiveautomation.ignition.common.WellKnownPathTypes;
+import com.inductiveautomation.ignition.common.browsing.BrowseFilter;
+import com.inductiveautomation.ignition.common.browsing.BrowseResults;
+import com.inductiveautomation.ignition.common.browsing.Result;
 import com.inductiveautomation.ignition.common.sqltags.history.TagHistoryQueryParams;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.ColumnQueryDefinition;
@@ -26,6 +29,17 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 
 public class KustoTest{
+    private static void PrintResults(BrowseResults<com.inductiveautomation.ignition.common.browsing.Result> results)
+    {
+        for (com.inductiveautomation.ignition.common.browsing.Result result : results.getResults())
+        {
+            System.out.println(
+                "path:" + result.getPath() +
+                " display path:" + result.getDisplayPath() +
+                " type:" + result.getType() +
+                " children:" + result.hasChildren());
+        }
+    }
 
     public static void main(String[] args) throws Exception {
 
@@ -42,6 +56,9 @@ public class KustoTest{
         settings.setString(AzureKustoHistoryProviderSettings.AADTenantId, appTenant);
         settings.setString(AzureKustoHistoryProviderSettings.DatabaseName, databaseName);
 
+        //
+        // Test sink
+        //
         AzureKustoHistorySink kusto = new AzureKustoHistorySink("kusto", null, settings);
         kusto.startup();
         ArrayList<AzureKustoTagValue> recs = new ArrayList<>();
@@ -52,17 +69,66 @@ public class KustoTest{
         }, new Date(), 1000000);
         recs.add(tagValue);
 
-        kusto.ingestRecords(recs);
+        //kusto.ingestRecords(recs);
 
-        QueryController controller = new KustoQueryController();
-        List<ColumnQueryDefinition> tagDefs = new ArrayList<ColumnQueryDefinition>();
 
-        QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, "ADX").setDriver("Ignition-Azure-Kusto-Test:default").setTag("Ramp/Ramp1");
+        QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, "ADX");
+
+        //
+        // Test provider
+        //
+
+        AzureKustoHistoryProvider provider = new AzureKustoHistoryProvider(null, "ADX", settings);
+
+        provider.ConnectToKusto();
+
+        BrowseFilter browseFilter = new BrowseFilter();
+
+        BrowseResults<com.inductiveautomation.ignition.common.browsing.Result> browsResults = null;
+
+        QualifiedPath qp = builder.build();
+        browsResults = provider.browse(qp, browseFilter);
+        PrintResults(browsResults);
+
+        builder.setDriver("Ignition-Azure-Kusto-Test:default");
+        qp = builder.build();
+        browsResults = provider.browse(qp, browseFilter);
+        PrintResults(browsResults);
+
+        builder.setTag("Ramp");
+        qp = builder.build();
+        browsResults = provider.browse(qp, browseFilter);
+        PrintResults(browsResults);
+
+        builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, "ADX").setDriver("Ignition-Azure-Kusto-Test:default");
+        builder.setTag("Ramp/Ramp1");
+        qp = builder.build();
+        browsResults = provider.browse(qp, browseFilter);
+        PrintResults(browsResults);
+
+        builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, "ADX").setDriver("Ignition-Azure-Kusto-Test:default");
+        builder.setTag("Ramp/Ramp1/Subramp");
+        qp = builder.build();
+        browsResults = provider.browse(qp, browseFilter);
+        PrintResults(browsResults);
+
+        //
+        // Test executor
+        //
+
+        //provider.createQuery
+
+        builder = new QualifiedPath.Builder().set(
+                WellKnownPathTypes.HistoryProvider, "ADX").setDriver(
+                "Ignition-Azure-Kusto-Test:default").setTag("Ramp/Ramp1");
 
         QualifiedPath q0 = builder.build();
 
         ColumnQueryDefinition c0 = new ColumnQueryDefinition(q0, null);
         ColumnQueryDefinition c1 = new ColumnQueryDefinition(q0, AzureKustoAggregates.AZUREKUSTO_AVERAGE);
+
+        QueryController controller = new KustoQueryController();
+        List<ColumnQueryDefinition> tagDefs = new ArrayList<ColumnQueryDefinition>();
 
         tagDefs.add(c0);
         tagDefs.add(c1);
@@ -104,14 +170,14 @@ public class KustoTest{
         //ClientRequestProperties clientRequestProperties = new ClientRequestProperties();
         //clientRequestProperties.setTimeoutInMilliSec(TimeUnit.MINUTES.toMillis(1));
 
-        KustoOperationResult results = client.execute(databaseName, queryText
+        KustoOperationResult queryResults = client.execute(databaseName, queryText
         //        , clientRequestProperties
         );
-        KustoResultSetTable mainTableResult = results.getPrimaryResults();
+        KustoResultSetTable mainTableResult = queryResults.getPrimaryResults();
         System.out.println(String.format("Kusto sent back %s rows.", mainTableResult.count()));
 
 
-        mainTableResult = results.getPrimaryResults();
+        mainTableResult = queryResults.getPrimaryResults();
 
         while (mainTableResult.next()){
             String system = mainTableResult.getString("systemName");
