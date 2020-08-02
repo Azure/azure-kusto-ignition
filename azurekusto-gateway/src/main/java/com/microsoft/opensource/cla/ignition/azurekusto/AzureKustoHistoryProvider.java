@@ -5,7 +5,10 @@ import com.inductiveautomation.ignition.common.WellKnownPathTypes;
 import com.inductiveautomation.ignition.common.browsing.BrowseFilter;
 import com.inductiveautomation.ignition.common.browsing.BrowseResults;
 import com.inductiveautomation.ignition.common.browsing.Result;
+import com.inductiveautomation.ignition.common.browsing.TagResult;
+import com.inductiveautomation.ignition.common.model.values.BasicQualifiedValue;
 import com.inductiveautomation.ignition.common.sqltags.history.Aggregate;
+import com.inductiveautomation.ignition.common.sqltags.model.types.DataQuality;
 import com.inductiveautomation.ignition.common.sqltags.model.types.TagQuality;
 import com.inductiveautomation.ignition.common.util.Timeline;
 import com.inductiveautomation.ignition.common.util.TimelineSet;
@@ -15,9 +18,17 @@ import com.inductiveautomation.ignition.gateway.sqltags.history.TagHistoryProvid
 import com.inductiveautomation.ignition.gateway.sqltags.history.TagHistoryProviderInformation;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.ColumnQueryDefinition;
 import com.inductiveautomation.ignition.gateway.sqltags.history.query.QueryController;
+import com.microsoft.azure.kusto.data.ClientImpl;
+import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
+import com.microsoft.azure.kusto.data.KustoOperationResult;
+import com.microsoft.azure.kusto.data.KustoResultSetTable;
+import com.microsoft.opensource.cla.ignition.Utils;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URISyntaxException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -35,6 +46,7 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
     private GatewayContext context;
     private AzureKustoHistoryProviderSettings settings;
     private AzureKustoHistorySink sink;
+    private ClientImpl kustoQueryClient; // A client for querying data
 
     public AzureKustoHistoryProvider(GatewayContext context, String name, AzureKustoHistoryProviderSettings settings) {
         this.name = name;
@@ -44,13 +56,35 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
 
     @Override
     public void startup() {
+
         try {
             // Create a new data sink with the same name as the provider to store data
             sink = new AzureKustoHistorySink(name, context, settings);
             context.getHistoryManager().registerSink(sink);
+
+            // Create a Kusto client
+            ConnectToKusto();
+
         } catch (Throwable e) {
             logger.error("Error registering Azure Kusto history sink", e);
         }
+    }
+
+    public void ConnectToKusto() throws URISyntaxException {
+        String clusterURL = settings.getClusterURL();
+        String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
+        String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
+        String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
+
+        ConnectionStringBuilder connectionString;
+
+        connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
+                clusterURL,
+                applicationId,
+                applicationKey,
+                aadTenantId);
+
+        kustoQueryClient = new ClientImpl(connectionString);
     }
 
     @Override
@@ -118,12 +152,67 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
         }
         String tagPath = qualifiedPath.getPathComponent(WellKnownPathTypes.Tag);
 
-        // TODO: Browse for all tags in ADX starting from histProv, systemName, tagProvider, and tagPath
-        //TagResult tagResult = new TagResult();
-        //tagResult.setHasChildren(true);
-        //QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, "HistoryProvider").setDriver("SystemName:TagProvider").setTag("TagPath");
-        //tagResult.setPath(builder.build());
-        //list.add(tagResult);
+        String queryData = settings.getEventsTableName() + "| where timestamp > ago(5d) \n";
+
+        if (systemName == null)
+        {
+            queryData += "| extend current = systemName";
+            queryData += "| extend child = tagProvider";
+            queryData += "| summarize countSubNodes = dcount(child) by current, systemName, tagProvider='', tagPath=''";
+        }
+        else if (tagPath == null)
+        {
+            queryData += "| where systemName == \"" + systemName + "\"";
+            queryData += "| where tagProvider == \"" + tagProvider + "\"";
+            queryData += "| parse tagPath with current '/' child";
+            queryData += "| where child !contains '/'";
+            queryData += "| summarize countSubNodes = dcount(child) by tagPath = current, systemName, tagProvider";
+        }
+        else
+        {
+            queryData += "| where systemName == '" + systemName + "'";
+            queryData += "| where tagProvider == '" + tagProvider + "'";
+            queryData += "| where tagPath startswith '" + tagPath + "'";
+            queryData += "| parse tagPath with  '" + tagPath +"' " + "residue";
+            queryData += "| parse residue with current '/' child";
+            queryData += "| extend current = iff(isnotempty(current), current, residue)";
+            queryData += "| extend group = strcat('" + tagPath + "', current)";
+            queryData += "| where child !contains '/' and isnotempty(residue)";
+            queryData += "| summarize countSubNodes = dcount(child) by systemName, tagProvider, tagPath = group";
+        }
+
+        queryData += "| extend hasChildren = countSubNodes > 1 | sort by systemName, tagProvider, tagPath, hasChildren asc | project systemName, tagProvider, tagPath, hasChildren";
+
+        String query = queryData;
+        System.out.println("Issuing query:" + query);
+        logger.debug("Issuing query:" + query);
+
+        try {
+            KustoOperationResult results = kustoQueryClient.execute(settings.getDatabaseName(), query);
+            KustoResultSetTable mainTableResult = results.getPrimaryResults();
+
+            while (mainTableResult.next()) {
+                String systemNameFromRecord = mainTableResult.getString("systemName");
+                String tagProviderFromRecord = mainTableResult.getString("tagProvider");
+                String tagPathFromRecord = mainTableResult.getString("tagPath");
+                Boolean boolHasChildren = mainTableResult.getBoolean("hasChildren");
+                logger.debug(
+                        "Browsing: System:" + systemName +
+                                " tagProvider:" + tagProvider +
+                                " tagPath:" + tagPath);
+
+                TagResult tagResult = new TagResult();
+                tagResult.setHasChildren(boolHasChildren);
+                QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, histProv).setDriver(
+                        systemNameFromRecord + ":" + tagProviderFromRecord).setTag(tagPathFromRecord);
+                tagResult.setPath(builder.build());
+                list.add(tagResult);
+            }
+        }
+        catch (Exception e)
+        {
+            logger.error("Issuing query failed: returning empty results: " + query);
+        }
 
         result.setResults(list);
         result.setTotalAvailableResults(list.size());

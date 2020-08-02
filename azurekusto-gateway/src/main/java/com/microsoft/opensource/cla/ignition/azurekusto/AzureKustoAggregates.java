@@ -15,6 +15,7 @@ public enum AzureKustoAggregates implements Aggregate {
     AZUREKUSTO_MAXIMUM,
     AZUREKUSTO_VARIANCE,
     AZUREKUSTO_ANY,
+    AZUREKUSTO_DCOUNT,
     AZUREKUSTO_RANGE,
     AZUREKUSTO_DURATIONGOOD,
     AZUREKUSTO_DURATIONBAD,
@@ -42,6 +43,7 @@ public enum AzureKustoAggregates implements Aggregate {
         if(ordinal() == AZUREKUSTO_MAXIMUM.ordinal()) { return "max";}
         if(ordinal() == AZUREKUSTO_VARIANCE.ordinal()) { return "variance";}
         if(ordinal() == AZUREKUSTO_ANY.ordinal()) { return "any";}
+        if(ordinal() == AZUREKUSTO_DCOUNT.ordinal()) { return "dcount";}
 
         return null;
         // TODO - How to communicate the right names for the UI?
