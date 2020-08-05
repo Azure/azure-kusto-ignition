@@ -135,7 +135,7 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
     @Override
     public BrowseResults<Result> browse(QualifiedPath qualifiedPath, BrowseFilter browseFilter) {
         logger.debug("browse(qualifiedPath, browseFilter) called.  qualifiedPath: " + qualifiedPath.toString()
-                + ", browseFilter: " + browseFilter.toString());
+                + ", browseFilter: " + (browseFilter == null ? "null" : browseFilter.toString()));
 
         BrowseResults<Result> result = new BrowseResults<>();
         ArrayList<Result> list = new ArrayList<>();
@@ -157,8 +157,8 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
         if (systemName == null)
         {
             queryData += "| extend current = systemName";
-            queryData += "| extend child = tagProvider";
-            queryData += "| summarize countSubNodes = dcount(child) by current, systemName, tagProvider='', tagPath=''";
+            queryData += "| extend child = tagPath";
+            queryData += "| summarize countSubNodes = dcount(child) by current, systemName, tagProvider, tagPath=''";
         }
         else if (tagPath == null)
         {
@@ -184,7 +184,6 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
         queryData += "| extend hasChildren = countSubNodes > 1 | sort by systemName, tagProvider, tagPath, hasChildren asc | project systemName, tagProvider, tagPath, hasChildren";
 
         String query = queryData;
-        System.out.println("Issuing query:" + query);
         logger.debug("Issuing query:" + query);
 
         try {
@@ -203,8 +202,13 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
 
                 TagResult tagResult = new TagResult();
                 tagResult.setHasChildren(boolHasChildren);
-                QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, histProv).setDriver(
-                        systemNameFromRecord + ":" + tagProviderFromRecord).setTag(tagPathFromRecord);
+                QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, histProv);
+                if(systemNameFromRecord != null && !systemNameFromRecord.isEmpty()) {
+                    builder.setDriver(systemNameFromRecord + ":" + tagProviderFromRecord);
+                }
+                if(tagPathFromRecord != null && !tagPathFromRecord.isEmpty()) {
+                    builder.setTag(tagPathFromRecord);
+                }
                 tagResult.setPath(builder.build());
                 list.add(tagResult);
             }

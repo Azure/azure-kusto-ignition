@@ -3,6 +3,7 @@ package com.microsoft.opensource.cla.ignition.azurekusto;
 import com.inductiveautomation.ignition.common.QualifiedPath;
 import com.inductiveautomation.ignition.common.WellKnownPathTypes;
 import com.inductiveautomation.ignition.common.model.values.BasicQualifiedValue;
+import com.inductiveautomation.ignition.common.sqltags.history.Aggregate;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataQuality;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataTypeClass;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
@@ -162,8 +163,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         // TODO: Implement all aggregate functions
         if (blockSize > 0) {
             // Block data, use aggregate function
-            String function = ((AzureKustoAggregates)controller.getQueryParameters().getAggregationMode()).getKqlFunction();
-
+            String function = AzureKustoAggregates.getKqlFunction(controller.getQueryParameters().getAggregationMode());
             queryData = queryData + "| summarize value = " + function + "(value_double), quality = min(quality) by systemName, tagProvider, tagPath, bin_at(timestamp, 1millisecond * blocks, startTime)";
         }
 
