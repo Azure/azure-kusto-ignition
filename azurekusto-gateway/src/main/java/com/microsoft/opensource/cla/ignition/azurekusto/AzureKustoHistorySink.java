@@ -186,10 +186,11 @@ public class AzureKustoHistorySink implements DataSink {
                     String valueAsJson = objectMapper.writeValueAsString(value);
                     recordAsObjects[3] = valueAsJson;
 
-                    if (value instanceof Double) {
-                        recordAsObjects[4] = (Double) value;
-                    } else if (value instanceof Integer) {
-                        recordAsObjects[5] = (Integer) value;
+                    if (value instanceof Double || value instanceof Float) {
+                        recordAsObjects[4] = value;
+                    } else if (value instanceof Boolean || value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) {
+                        recordAsObjects[4] = value;
+                        recordAsObjects[5] = value;
                     }
                 }
 

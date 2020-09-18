@@ -35,6 +35,28 @@
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.inductiveautomation.ignition:simple-orm:7.9.12" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.inductiveautomation.ignition:metro:7.9.12" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.protobuf:protobuf-java:3.0.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.inductiveautomation.ignition:common:7.9.12" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.jgrapht:jgrapht-jdk1.5:0.7.3" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-io:commons-io:2.1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-validator:commons-validator:1.5.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-beanutils:commons-beanutils:1.9.2" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-digester:commons-digester:1.8.1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-collections:commons-collections:3.2.2" level="project" />
+    <orderEntry type="library" name="Maven: com.google.guava:guava:18.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.bouncycastle:bcprov-jdk15on:1.61" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.bouncycastle:bcpkix-jdk15on:1.61" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.python:jython:2.5.3-ia4" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.slf4j:log4j-over-slf4j:1.7.21" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.slf4j:jul-to-slf4j:1.7.21" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.jidesoft:jide-common:3.7.2" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: joda-time:joda-time:2.3" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-cli:commons-cli:1.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-lang:commons-lang:1.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.fifesoft:rsyntaxtextarea:2.5.7" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.inductiveautomation.ignition:gateway-api:7.9.12" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.inductiveautomation.ignition:simple-orm:7.9.12" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.inductiveautomation.ignition:metro:7.9.12" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.protobuf:protobuf-java:3.0.0" level="project" />
     <orderEntry type="library" name="Maven: com.microsoft.azure.kusto:kusto-ingest:2.1.1" level="project" />
     <orderEntry type="library" name="Maven: com.microsoft.azure:azure-storage:8.3.0" level="project" />
     <orderEntry type="library" name="Maven: com.microsoft.azure:azure-keyvault-core:1.0.0" level="project" />
