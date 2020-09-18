@@ -3,7 +3,6 @@ package com.microsoft.opensource.cla.ignition.azurekusto;
 import com.inductiveautomation.ignition.common.QualifiedPath;
 import com.inductiveautomation.ignition.common.WellKnownPathTypes;
 import com.inductiveautomation.ignition.common.model.values.BasicQualifiedValue;
-import com.inductiveautomation.ignition.common.sqltags.history.Aggregate;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataQuality;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataTypeClass;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
@@ -17,8 +16,6 @@ import com.microsoft.azure.kusto.data.ClientImpl;
 import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
 import com.microsoft.azure.kusto.data.KustoOperationResult;
 import com.microsoft.azure.kusto.data.KustoResultSetTable;
-import com.microsoft.azure.kusto.ingest.IngestClient;
-import com.microsoft.azure.kusto.ingest.StreamingIngestClient;
 import com.microsoft.opensource.cla.ignition.Utils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -44,8 +41,6 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
 
     private ConnectionStringBuilder connectionString;
     private ClientImpl kustoQueryClient; // A client for querying data
-    private IngestClient kustoQueuedIngestClient; // A client for ingesting data in bulks
-    private StreamingIngestClient kustoStreamingIngestClient; // A client for ingesting row by row
 
     boolean processed = false;
     long maxTSInData = -1;
@@ -150,10 +145,10 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
 
         queryData += "| where ";
         AzureKustoTag[] tagKeys = tags.keySet().toArray(new AzureKustoTag[]{});
-        for(int i = 0; i < tagKeys.length; i++){
+        for (int i = 0; i < tagKeys.length; i++) {
             AzureKustoTag tag = tagKeys[i];
             queryData += "(systemName has \"" + tag.getSystemName() + "\" and tagProvider has \"" + tag.getTagProvider() + "\" and tagPath has \"" + tag.getTagPath() + "\")";
-            if(i < (tagKeys.length - 1)){
+            if (i < (tagKeys.length - 1)) {
                 queryData += " or ";
             }
         }

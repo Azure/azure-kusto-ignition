@@ -25,27 +25,28 @@ import com.inductiveautomation.ignition.common.sqltags.history.Aggregate;
 
 public enum AzureKustoAggregates implements Aggregate {
     AZUREKUSTO_MINMAX("MinMax", "min"),
-    AZUREKUSTO_LASTVALUE("LastValue", "any"), // TODO
+    //AZUREKUSTO_LASTVALUE("LastValue", "any"), // TODO
     AZUREKUSTO_TOTAL("Total", "total"),
     AZUREKUSTO_DCOUNT("DCount", "dcount"),
     AZUREKUSTO_AVERAGE("SimpleAverage", "avg"),
-    AZUREKUSTO_TIMEAVERAGE("Average", "avg"), // TODO
+    //AZUREKUSTO_TIMEAVERAGE("Average", "avg"), // TODO
     AZUREKUSTO_COUNT("Count", "count"),
     AZUREKUSTO_STDEV("StdDev", "stddev"),
     AZUREKUSTO_MINIMUM("Mininum", "min"),
     AZUREKUSTO_MAXIMUM("Maximum", "max"),
-    AZUREKUSTO_VARIANCE("Variance", "variance"),
-    AZUREKUSTO_COUNTON("CountOn", "count"), // TODO
-    AZUREKUSTO_COUNTOFF("CountOff", "count"), // TODO
-    AZUREKUSTO_DURATIONON("DurationOn", "count"), // TODO
-    AZUREKUSTO_DURAITONOFF("DurationOff", "count"), // TODO
-    AZUREKUSTO_RANGE("Range", "avg"), // TODO
-    AZUREKUSTO_PERCENTGOOD("PctGood", "avg"), // TODO
-    AZUREKUSTO_PERCENTBAD("PctBad", "avg"); // TODO
+    AZUREKUSTO_VARIANCE("Variance", "variance");
+    //AZUREKUSTO_COUNTON("CountOn", "count"), // TODO
+    //AZUREKUSTO_COUNTOFF("CountOff", "count"), // TODO
+    //AZUREKUSTO_DURATIONON("DurationOn", "count"), // TODO
+    //AZUREKUSTO_DURAITONOFF("DurationOff", "count"), // TODO
+    //AZUREKUSTO_RANGE("Range", "avg"), // TODO
+    //AZUREKUSTO_PERCENTGOOD("PctGood", "avg"), // TODO
+    //AZUREKUSTO_PERCENTBAD("PctBad", "avg"); // TODO
 
     private String ignitionAggregate;
     private String kqlFunction;
-    AzureKustoAggregates(String ignitionAggregate, String kqlFunction){
+
+    AzureKustoAggregates(String ignitionAggregate, String kqlFunction) {
         this.ignitionAggregate = ignitionAggregate;
         this.kqlFunction = kqlFunction;
     }
@@ -69,8 +70,8 @@ public enum AzureKustoAggregates implements Aggregate {
     }
 
     public static String getKqlFunction(Aggregate aggregate) {
-        for(AzureKustoAggregates azureKustoAggregate : AzureKustoAggregates.values()){
-            if(azureKustoAggregate.getIgnitionAggregate().equals(aggregate.getName())){
+        for (AzureKustoAggregates azureKustoAggregate : AzureKustoAggregates.values()) {
+            if (azureKustoAggregate.getIgnitionAggregate().equals(aggregate.getName())) {
                 return azureKustoAggregate.getKqlFunction();
             }
         }

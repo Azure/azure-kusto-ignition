@@ -5,7 +5,9 @@ import com.inductiveautomation.ignition.common.StatMetric;
 import com.inductiveautomation.ignition.common.i18n.LocalizedString;
 import com.inductiveautomation.ignition.gateway.history.*;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
+import com.microsoft.azure.kusto.data.ClientImpl;
 import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
+import com.microsoft.azure.kusto.data.KustoOperationResult;
 import com.microsoft.azure.kusto.ingest.IngestClient;
 import com.microsoft.azure.kusto.ingest.IngestClientFactory;
 import com.microsoft.azure.kusto.ingest.IngestionProperties;
@@ -82,12 +84,22 @@ public class AzureKustoHistorySink implements DataSink {
                 applicationKey,
                 aadTenantId);
         try {
+            ClientImpl client = new ClientImpl(connectionString);
+
+            try {
+                KustoOperationResult result = client.execute(database, ".show table " + table);
+            } catch (Throwable ex) {
+                try {
+                    client.execute(database, ".create table " + table + " ( systemName:string, tagProvider:string, tagPath:string, value:dynamic, value_double:real, value_integer:int, timestamp:datetime, quality:int)");
+                } catch (Throwable ex2) {
+                    logger.error("Error creating table '" + table + "'", ex2);
+                }
+            }
             streamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
             queuedClient = IngestClientFactory.createClient(DmConnectionString);
             table = settings.getEventsTableName();
             ingestionProperties = new IngestionProperties(database, table);
             ingestionProperties.setDataFormat(IngestionProperties.DATA_FORMAT.csv);
-
         } catch (URISyntaxException ex) {
             logger.error("Error on AzureKustoHistorySink startup ", ex);
         }
