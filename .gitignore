@@ -93,9 +93,6 @@ StyleCopReport.xml
 *.svclog
 *.scc
 
-# Files built by IntelliJ
-*.iml
-
 # Chutzpah Test files
 _Chutzpah*
 
