@@ -64,11 +64,11 @@ public class AzureKustoHistorySink implements DataSink {
 
     @Override
     public void startup() {
-        String clusterURL = settings.getString(AzureKustoHistoryProviderSettings.ClusterURL);
-        String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
-        String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
-        String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
-        database = settings.getString(AzureKustoHistoryProviderSettings.DatabaseName);
+        String clusterURL = settings.getClusterURL();
+        String applicationId = settings.getApplicationId();
+        String applicationKey = settings.getApplicationKey();
+        String aadTenantId = settings.getAADTenantId();
+        database = settings.getDatabaseName();
 
         String dmUrl = Utils.getDMUriFromSetting(clusterURL);
         String engineURL = Utils.getEngineUriFromSetting(clusterURL);
@@ -97,7 +97,7 @@ public class AzureKustoHistorySink implements DataSink {
             }
             streamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
             queuedClient = IngestClientFactory.createClient(DmConnectionString);
-            table = settings.getEventsTableName();
+            table = settings.getTableName();
             ingestionProperties = new IngestionProperties(database, table);
             ingestionProperties.setDataFormat(IngestionProperties.DATA_FORMAT.csv);
         } catch (URISyntaxException ex) {

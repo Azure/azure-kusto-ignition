@@ -106,9 +106,9 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
     @Override
     public void initialize() throws Exception {
         String clusterURL = settings.getClusterURL();
-        String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
-        String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
-        String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
+        String applicationId = settings.getApplicationId();
+        String applicationKey = settings.getApplicationKey();
+        String aadTenantId = settings.getAADTenantId();
 
         connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
                 clusterURL,
@@ -141,7 +141,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 "let blocks = " + blockSize + ";\n" +
                         "let startTime = " + Utils.getDateLiteral(startDate) + ";\n" +
                         "let endTime = " + Utils.getDateLiteral(endDate) + ";\n";
-        String queryData = settings.getEventsTableName() + "| where timestamp between(startTime..endTime) ";
+        String queryData = settings.getTableName() + "| where timestamp between(startTime..endTime) ";
 
         queryData += "| where ";
         AzureKustoTag[] tagKeys = tags.keySet().toArray(new AzureKustoTag[]{});

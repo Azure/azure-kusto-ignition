@@ -22,6 +22,7 @@ public class AzureKustoHistoryProviderSettings extends PersistentRecord {
     public static final EncodedStringField ApplicationKey = new EncodedStringField(META, "ApplicationKey", SFieldFlags.SMANDATORY);
     public static final StringField ClusterURL = new StringField(META, "ClusterURL", SFieldFlags.SMANDATORY).setDefault("https://ignitionadxpoc.eastus.kusto.windows.net");
     public static final StringField DatabaseName = new StringField(META, "DatabaseName", SFieldFlags.SMANDATORY);
+    public static final StringField TableName = new StringField(META, "TableName", SFieldFlags.SMANDATORY).setDefault("Events");
     public static final BooleanField Streaming = new BooleanField(META, "Streaming", SFieldFlags.SMANDATORY).setDefault(true);
 
     public String getClusterURL() {
@@ -44,8 +45,8 @@ public class AzureKustoHistoryProviderSettings extends PersistentRecord {
         return getString(DatabaseName);
     }
 
-    public String getEventsTableName() {
-        return "Events";
+    public String getTableName() {
+        return getString(TableName);
     }
 
     static {

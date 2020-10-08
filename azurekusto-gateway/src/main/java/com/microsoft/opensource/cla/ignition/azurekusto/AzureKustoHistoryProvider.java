@@ -68,9 +68,9 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
 
     public void ConnectToKusto() throws URISyntaxException {
         String clusterURL = settings.getClusterURL();
-        String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
-        String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
-        String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
+        String applicationId = settings.getApplicationId();
+        String applicationKey = settings.getApplicationKey();
+        String aadTenantId = settings.getAADTenantId();
 
         ConnectionStringBuilder connectionString;
 
@@ -148,7 +148,7 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
         }
         String tagPath = qualifiedPath.getPathComponent(WellKnownPathTypes.Tag);
 
-        String query = settings.getEventsTableName();
+        String query = settings.getTableName();
         if (systemName == null) {
             query += " | distinct systemName, tagProvider, tagPath";
             query += " | summarize countChildren = dcount(tagPath) by systemName, tagProvider";
@@ -220,7 +220,7 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
 
         String queryPrefix = "let startTime = " + Utils.getDateLiteral(startDate) + ";\n" +
                 "let endTime = " + Utils.getDateLiteral(endDate) + ";\n";
-        String queryData = settings.getEventsTableName() + "| where timestamp between(startTime..endTime) ";
+        String queryData = settings.getTableName() + "| where timestamp between(startTime..endTime) ";
 
         queryData += "| where ";
         QualifiedPath[] tagKeys = tags.toArray(new QualifiedPath[]{});
