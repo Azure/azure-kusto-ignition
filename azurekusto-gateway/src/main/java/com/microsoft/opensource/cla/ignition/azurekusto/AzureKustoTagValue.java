@@ -8,12 +8,12 @@ import java.util.Date;
 
 /**
  * Represents a historian tag value. The tag is qualified by:
- *    systemName - The name of the Ignition Gateway the tag is from
- *    tagProvider - The name of the tag database the tag is from
- *    tagPath - The fully qualified tag path, path/to/my/tag
- *    value - The value of the tag
- *    timestamp - The timestamp for the value
- *    quality - A quality code that represents the quality of the value, Good=192 else Bad
+ * systemName - The name of the Ignition Gateway the tag is from
+ * tagProvider - The name of the tag database the tag is from
+ * tagPath - The fully qualified tag path, path/to/my/tag
+ * value - The value of the tag
+ * timestamp - The timestamp for the value
+ * quality - A quality code that represents the quality of the value, Good=192 else Bad
  */
 public class AzureKustoTagValue {
     private AzureKustoTag tag;
@@ -21,7 +21,7 @@ public class AzureKustoTagValue {
     private Date timestamp;
     private Integer quality;
 
-    public AzureKustoTagValue(AzureKustoTag tag, Object value, Date timestamp, Integer quality){
+    public AzureKustoTagValue(AzureKustoTag tag, Object value, Date timestamp, Integer quality) {
         this.tag = tag;
         this.value = value;
         this.timestamp = timestamp;

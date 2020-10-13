@@ -5,7 +5,9 @@ import com.inductiveautomation.ignition.common.StatMetric;
 import com.inductiveautomation.ignition.common.i18n.LocalizedString;
 import com.inductiveautomation.ignition.gateway.history.*;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
+import com.microsoft.azure.kusto.data.ClientImpl;
 import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
+import com.microsoft.azure.kusto.data.KustoOperationResult;
 import com.microsoft.azure.kusto.ingest.IngestClient;
 import com.microsoft.azure.kusto.ingest.IngestClientFactory;
 import com.microsoft.azure.kusto.ingest.IngestionProperties;
@@ -62,11 +64,11 @@ public class AzureKustoHistorySink implements DataSink {
 
     @Override
     public void startup() {
-        String clusterURL = settings.getString(AzureKustoHistoryProviderSettings.ClusterURL);
-        String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
-        String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
-        String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
-        database = settings.getString(AzureKustoHistoryProviderSettings.DatabaseName);
+        String clusterURL = settings.getClusterURL();
+        String applicationId = settings.getApplicationId();
+        String applicationKey = settings.getApplicationKey();
+        String aadTenantId = settings.getAADTenantId();
+        database = settings.getDatabaseName();
 
         String dmUrl = Utils.getDMUriFromSetting(clusterURL);
         String engineURL = Utils.getEngineUriFromSetting(clusterURL);
@@ -82,12 +84,22 @@ public class AzureKustoHistorySink implements DataSink {
                 applicationKey,
                 aadTenantId);
         try {
+            ClientImpl client = new ClientImpl(connectionString);
+
+            try {
+                KustoOperationResult result = client.execute(database, ".show table " + table);
+            } catch (Throwable ex) {
+                try {
+                    client.execute(database, ".create table " + table + " ( systemName:string, tagProvider:string, tagPath:string, value:dynamic, value_double:real, value_integer:int, timestamp:datetime, quality:int)");
+                } catch (Throwable ex2) {
+                    logger.error("Error creating table '" + table + "'", ex2);
+                }
+            }
             streamingIngestClient = IngestClientFactory.createStreamingIngestClient(connectionString);
             queuedClient = IngestClientFactory.createClient(DmConnectionString);
-            table = settings.getEventsTableName();
+            table = settings.getTableName();
             ingestionProperties = new IngestionProperties(database, table);
             ingestionProperties.setDataFormat(IngestionProperties.DATA_FORMAT.csv);
-
         } catch (URISyntaxException ex) {
             logger.error("Error on AzureKustoHistorySink startup ", ex);
         }
@@ -174,10 +186,11 @@ public class AzureKustoHistorySink implements DataSink {
                     String valueAsJson = objectMapper.writeValueAsString(value);
                     recordAsObjects[3] = valueAsJson;
 
-                    if (value instanceof Double) {
-                        recordAsObjects[4] = (Double) value;
-                    } else if (value instanceof Integer) {
-                        recordAsObjects[5] = (Integer) value;
+                    if (value instanceof Double || value instanceof Float) {
+                        recordAsObjects[4] = value;
+                    } else if (value instanceof Boolean || value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) {
+                        recordAsObjects[4] = value;
+                        recordAsObjects[5] = value;
                     }
                 }
 

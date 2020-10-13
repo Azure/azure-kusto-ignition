@@ -6,9 +6,7 @@ import com.inductiveautomation.ignition.common.browsing.BrowseFilter;
 import com.inductiveautomation.ignition.common.browsing.BrowseResults;
 import com.inductiveautomation.ignition.common.browsing.Result;
 import com.inductiveautomation.ignition.common.browsing.TagResult;
-import com.inductiveautomation.ignition.common.model.values.BasicQualifiedValue;
 import com.inductiveautomation.ignition.common.sqltags.history.Aggregate;
-import com.inductiveautomation.ignition.common.sqltags.model.types.DataQuality;
 import com.inductiveautomation.ignition.common.sqltags.model.types.TagQuality;
 import com.inductiveautomation.ignition.common.util.Timeline;
 import com.inductiveautomation.ignition.common.util.TimelineSet;
@@ -23,7 +21,6 @@ import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
 import com.microsoft.azure.kusto.data.KustoOperationResult;
 import com.microsoft.azure.kusto.data.KustoResultSetTable;
 import com.microsoft.opensource.cla.ignition.Utils;
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +53,6 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
 
     @Override
     public void startup() {
-
         try {
             // Create a new data sink with the same name as the provider to store data
             sink = new AzureKustoHistorySink(name, context, settings);
@@ -72,9 +68,9 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
 
     public void ConnectToKusto() throws URISyntaxException {
         String clusterURL = settings.getClusterURL();
-        String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
-        String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
-        String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
+        String applicationId = settings.getApplicationId();
+        String applicationKey = settings.getApplicationKey();
+        String aadTenantId = settings.getAADTenantId();
 
         ConnectionStringBuilder connectionString;
 
@@ -135,7 +131,7 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
     @Override
     public BrowseResults<Result> browse(QualifiedPath qualifiedPath, BrowseFilter browseFilter) {
         logger.debug("browse(qualifiedPath, browseFilter) called.  qualifiedPath: " + qualifiedPath.toString()
-                + ", browseFilter: " + browseFilter.toString());
+                + ", browseFilter: " + (browseFilter == null ? "null" : browseFilter.toString()));
 
         BrowseResults<Result> result = new BrowseResults<>();
         ArrayList<Result> list = new ArrayList<>();
@@ -152,39 +148,28 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
         }
         String tagPath = qualifiedPath.getPathComponent(WellKnownPathTypes.Tag);
 
-        String queryData = settings.getEventsTableName() + "| where timestamp > ago(5d) \n";
-
-        if (systemName == null)
-        {
-            queryData += "| extend current = systemName";
-            queryData += "| extend child = tagProvider";
-            queryData += "| summarize countSubNodes = dcount(child) by current, systemName, tagProvider='', tagPath=''";
+        String query = settings.getTableName();
+        if (systemName == null) {
+            query += " | distinct systemName, tagProvider, tagPath";
+            query += " | summarize countChildren = dcount(tagPath) by systemName, tagProvider";
+            query += " | extend hasChildren = countChildren > 0";
+            query += " | project systemName, tagProvider, hasChildren";
+        } else if (tagPath == null) {
+            query += " | where systemName == \"" + systemName + "\" | where tagProvider == \"" + tagProvider + "\"";
+            query += " | distinct systemName, tagProvider, tagPath";
+            query += " | extend tagPrefix = tostring(split(tagPath, \"/\")[0])";
+            query += " | summarize countChildren = dcountif(tagPath, tagPath != tagPrefix) by systemName, tagProvider, tagPrefix";
+            query += " | extend hasChildren = countChildren > 0";
+            query += " | project systemName, tagProvider, tagPrefix, hasChildren";
+        } else {
+            String[] tagPathParts = tagPath.split("/");
+            query += " | where systemName == \"" + systemName + "\" | where tagProvider == \"" + tagProvider + "\" | where tagPath startswith \"" + tagPath + "/\"";
+            query += " | distinct systemName, tagProvider, tagPath";
+            query += " | extend tagPrefix = strcat_array(array_slice(split(tagPath, \"/\"), 0, " + tagPathParts.length + "), \"/\")";
+            query += " | summarize countChildren = dcountif(tagPath, tagPath != tagPrefix) by systemName, tagProvider, tagPrefix";
+            query += " | extend hasChildren = countChildren > 0";
+            query += " | project systemName, tagProvider, tagPrefix, hasChildren";
         }
-        else if (tagPath == null)
-        {
-            queryData += "| where systemName == \"" + systemName + "\"";
-            queryData += "| where tagProvider == \"" + tagProvider + "\"";
-            queryData += "| parse tagPath with current '/' child";
-            queryData += "| where child !contains '/'";
-            queryData += "| summarize countSubNodes = dcount(child) by tagPath = current, systemName, tagProvider";
-        }
-        else
-        {
-            queryData += "| where systemName == '" + systemName + "'";
-            queryData += "| where tagProvider == '" + tagProvider + "'";
-            queryData += "| where tagPath startswith '" + tagPath + "'";
-            queryData += "| parse tagPath with  '" + tagPath +"' " + "residue";
-            queryData += "| parse residue with current '/' child";
-            queryData += "| extend current = iff(isnotempty(current), current, residue)";
-            queryData += "| extend group = strcat('" + tagPath + "', current)";
-            queryData += "| where child !contains '/' and isnotempty(residue)";
-            queryData += "| summarize countSubNodes = dcount(child) by systemName, tagProvider, tagPath = group";
-        }
-
-        queryData += "| extend hasChildren = countSubNodes > 1 | sort by systemName, tagProvider, tagPath, hasChildren asc | project systemName, tagProvider, tagPath, hasChildren";
-
-        String query = queryData;
-        System.out.println("Issuing query:" + query);
         logger.debug("Issuing query:" + query);
 
         try {
@@ -192,25 +177,27 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
             KustoResultSetTable mainTableResult = results.getPrimaryResults();
 
             while (mainTableResult.next()) {
-                String systemNameFromRecord = mainTableResult.getString("systemName");
-                String tagProviderFromRecord = mainTableResult.getString("tagProvider");
-                String tagPathFromRecord = mainTableResult.getString("tagPath");
-                Boolean boolHasChildren = mainTableResult.getBoolean("hasChildren");
-                logger.debug(
-                        "Browsing: System:" + systemName +
-                                " tagProvider:" + tagProvider +
-                                " tagPath:" + tagPath);
+                boolean hasChildren = mainTableResult.getBoolean("hasChildren");
+                String systemNameFromRecord = systemNameFromRecord = mainTableResult.getString("systemName");
+                String tagProviderFromRecord = tagProviderFromRecord = mainTableResult.getString("tagProvider");
+                String tagPathFromRecord = null;
+                if (systemName != null) {
+                    tagPathFromRecord = mainTableResult.getString("tagPrefix");
+                }
 
                 TagResult tagResult = new TagResult();
-                tagResult.setHasChildren(boolHasChildren);
-                QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, histProv).setDriver(
-                        systemNameFromRecord + ":" + tagProviderFromRecord).setTag(tagPathFromRecord);
+                tagResult.setHasChildren(hasChildren);
+                QualifiedPath.Builder builder = new QualifiedPath.Builder().set(WellKnownPathTypes.HistoryProvider, histProv);
+                if (systemNameFromRecord != null && !systemNameFromRecord.isEmpty()) {
+                    builder.setDriver(systemNameFromRecord + ":" + tagProviderFromRecord);
+                }
+                if (tagPathFromRecord != null && !tagPathFromRecord.isEmpty()) {
+                    builder.setTag(tagPathFromRecord);
+                }
                 tagResult.setPath(builder.build());
                 list.add(tagResult);
             }
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             logger.error("Issuing query failed: returning empty results: " + query);
         }
 
@@ -223,15 +210,53 @@ public class AzureKustoHistoryProvider implements TagHistoryProvider {
     @Override
     public TimelineSet queryDensity(
             List<QualifiedPath> tags,
-            Date                startDate,
-            Date                endDate,
-            String              queryId) throws Exception {
+            Date startDate,
+            Date endDate,
+            String queryId) throws Exception {
         logger.debug("queryDensity(tags, startDate, endDate, queryId) called.  tags: " + tags.toString()
                 + ", startDate: " + startDate.toString() + ", endDate: " + endDate.toString() + ", queryId: " + queryId);
 
-        // TODO: Find the data density for the tags within the given range. Density is just an ordered list of
-        //  timestamps for the given range with a weight.
         ArrayList<Timeline> timelines = new ArrayList<>();
+
+        String queryPrefix = "let startTime = " + Utils.getDateLiteral(startDate) + ";\n" +
+                "let endTime = " + Utils.getDateLiteral(endDate) + ";\n";
+        String queryData = settings.getTableName() + "| where timestamp between(startTime..endTime) ";
+
+        queryData += "| where ";
+        QualifiedPath[] tagKeys = tags.toArray(new QualifiedPath[]{});
+        for (int i = 0; i < tagKeys.length; i++) {
+            QualifiedPath tag = tagKeys[i];
+            String systemName = null;
+            String tagProvider = null;
+            String driver = tag.getPathComponent(WellKnownPathTypes.Driver);
+            if (driver != null) {
+                String[] parts = driver.split(":");
+                systemName = parts[0];
+                tagProvider = parts[1];
+            }
+            String tagPath = tag.getPathComponent(WellKnownPathTypes.Tag);
+
+            queryData += "(systemName has \"" + systemName + "\" and tagProvider has \"" + tagProvider + "\" and tagPath has \"" + tagPath + "\")";
+            if (i < (tagKeys.length - 1)) {
+                queryData += " or ";
+            }
+        }
+
+        String querySuffix = "| summarize startDate = min(timestamp), endDate = max(timestamp) by systemName, tagProvider, tagPath";
+        String query = queryPrefix + queryData + querySuffix;
+        logger.debug("Issuing query:" + query);
+
+        KustoOperationResult results = kustoQueryClient.execute(settings.getDatabaseName(), query);
+        KustoResultSetTable mainTableResult = results.getPrimaryResults();
+
+        while (mainTableResult.next()) {
+            Timeline t = new Timeline();
+            Timestamp start = mainTableResult.getTimestamp("startDate");
+            Timestamp end = mainTableResult.getTimestamp("endDate");
+            t.addSegment(start.getTime(), end.getTime());
+            timelines.add(t);
+        }
+
         TimelineSet timelineSet = new TimelineSet(timelines);
         return timelineSet;
     }

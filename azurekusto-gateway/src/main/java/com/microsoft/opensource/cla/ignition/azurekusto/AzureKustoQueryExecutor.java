@@ -16,8 +16,6 @@ import com.microsoft.azure.kusto.data.ClientImpl;
 import com.microsoft.azure.kusto.data.ConnectionStringBuilder;
 import com.microsoft.azure.kusto.data.KustoOperationResult;
 import com.microsoft.azure.kusto.data.KustoResultSetTable;
-import com.microsoft.azure.kusto.ingest.IngestClient;
-import com.microsoft.azure.kusto.ingest.StreamingIngestClient;
 import com.microsoft.opensource.cla.ignition.Utils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -43,8 +41,6 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
 
     private ConnectionStringBuilder connectionString;
     private ClientImpl kustoQueryClient; // A client for querying data
-    private IngestClient kustoQueuedIngestClient; // A client for ingesting data in bulks
-    private StreamingIngestClient kustoStreamingIngestClient; // A client for ingesting row by row
 
     boolean processed = false;
     long maxTSInData = -1;
@@ -110,9 +106,9 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
     @Override
     public void initialize() throws Exception {
         String clusterURL = settings.getClusterURL();
-        String applicationId = settings.getString(AzureKustoHistoryProviderSettings.ApplicationId);
-        String applicationKey = settings.getString(AzureKustoHistoryProviderSettings.ApplicationKey);
-        String aadTenantId = settings.getString(AzureKustoHistoryProviderSettings.AADTenantId);
+        String applicationId = settings.getApplicationId();
+        String applicationKey = settings.getApplicationKey();
+        String aadTenantId = settings.getAADTenantId();
 
         connectionString = ConnectionStringBuilder.createWithAadApplicationCredentials(
                 clusterURL,
@@ -145,14 +141,14 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
                 "let blocks = " + blockSize + ";\n" +
                         "let startTime = " + Utils.getDateLiteral(startDate) + ";\n" +
                         "let endTime = " + Utils.getDateLiteral(endDate) + ";\n";
-        String queryData = settings.getEventsTableName() + "| where timestamp between(startTime..endTime) ";
+        String queryData = settings.getTableName() + "| where timestamp between(startTime..endTime) ";
 
         queryData += "| where ";
         AzureKustoTag[] tagKeys = tags.keySet().toArray(new AzureKustoTag[]{});
-        for(int i = 0; i < tagKeys.length; i++){
+        for (int i = 0; i < tagKeys.length; i++) {
             AzureKustoTag tag = tagKeys[i];
             queryData += "(systemName has \"" + tag.getSystemName() + "\" and tagProvider has \"" + tag.getTagProvider() + "\" and tagPath has \"" + tag.getTagPath() + "\")";
-            if(i < (tagKeys.length - 1)){
+            if (i < (tagKeys.length - 1)) {
                 queryData += " or ";
             }
         }
@@ -162,8 +158,7 @@ public class AzureKustoQueryExecutor implements HistoryQueryExecutor {
         // TODO: Implement all aggregate functions
         if (blockSize > 0) {
             // Block data, use aggregate function
-            String function = ((AzureKustoAggregates)controller.getQueryParameters().getAggregationMode()).getKqlFunction();
-
+            String function = AzureKustoAggregates.getKqlFunction(controller.getQueryParameters().getAggregationMode());
             queryData = queryData + "| summarize value = " + function + "(value_double), quality = min(quality) by systemName, tagProvider, tagPath, bin_at(timestamp, 1millisecond * blocks, startTime)";
         }
 

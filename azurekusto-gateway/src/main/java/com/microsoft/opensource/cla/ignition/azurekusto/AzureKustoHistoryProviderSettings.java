@@ -4,8 +4,6 @@ import com.inductiveautomation.ignition.gateway.localdb.persistence.*;
 import com.inductiveautomation.ignition.gateway.sqltags.config.SQLTagHistoryProviderRecord;
 import simpleorm.dataset.SFieldFlags;
 
-import javax.xml.crypto.Data;
-
 /**
  * Represents the settings required for the Azure Kusto history provider.
  * A user will fill in all of these fields. The data is stored inside of
@@ -24,14 +22,32 @@ public class AzureKustoHistoryProviderSettings extends PersistentRecord {
     public static final EncodedStringField ApplicationKey = new EncodedStringField(META, "ApplicationKey", SFieldFlags.SMANDATORY);
     public static final StringField ClusterURL = new StringField(META, "ClusterURL", SFieldFlags.SMANDATORY).setDefault("https://ignitionadxpoc.eastus.kusto.windows.net");
     public static final StringField DatabaseName = new StringField(META, "DatabaseName", SFieldFlags.SMANDATORY);
+    public static final StringField TableName = new StringField(META, "TableName", SFieldFlags.SMANDATORY).setDefault("Events");
     public static final BooleanField Streaming = new BooleanField(META, "Streaming", SFieldFlags.SMANDATORY).setDefault(true);
 
-    public String getClusterURL(){return getString(ClusterURL);}
-    public String getApplicationId(){return getString(ApplicationId);}
-    public String getApplicationKey(){return getString(ApplicationKey);}
-    public String getAADTenantId(){return getString(AADTenantId);}
-    public String getDatabaseName(){return getString(DatabaseName);}
-    public String getEventsTableName(){return "Events";}
+    public String getClusterURL() {
+        return getString(ClusterURL);
+    }
+
+    public String getApplicationId() {
+        return getString(ApplicationId);
+    }
+
+    public String getApplicationKey() {
+        return getString(ApplicationKey);
+    }
+
+    public String getAADTenantId() {
+        return getString(AADTenantId);
+    }
+
+    public String getDatabaseName() {
+        return getString(DatabaseName);
+    }
+
+    public String getTableName() {
+        return getString(TableName);
+    }
 
     static {
         ProfileId.getFormMeta().setVisible(false);
